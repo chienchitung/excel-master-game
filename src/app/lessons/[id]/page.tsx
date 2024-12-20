@@ -218,7 +218,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
               >
                 <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="text-sm md:text-base">返回課程</span>
+                <span className="text-sm md:text-base">返回首頁</span>
               </Link>
               <div className="h-4 w-px bg-gray-200" />
               <Badge variant="outline" className="bg-blue-600 text-white border-0 text-sm md:text-base">
