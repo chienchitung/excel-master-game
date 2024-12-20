@@ -39,7 +39,7 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export interface LessonState {
+export interface State {
   currentLesson: number;
   completed: boolean;
   stars: number;
@@ -48,5 +48,10 @@ export interface LessonState {
   hasSubmitted: boolean;
   isCorrect: boolean;
   showChat: boolean;
+  exp: number;
+  level: number;
+  dailyProgress: number;
+  dailyGoal: number;
+  streak: number;
 }
 

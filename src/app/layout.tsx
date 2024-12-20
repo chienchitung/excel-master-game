@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,28 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-TW">
-      <head>
-        <Script
-          id="genially-embed"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function (d) { 
-                var js, id = "genially-embed-js", ref = d.getElementsByTagName("script")[0]; 
-                if (d.getElementById(id)) { return; } 
-                js = d.createElement("script"); 
-                js.id = id; 
-                js.async = true; 
-                js.src = "https://view.genially.com/static/embed/embed.js"; 
-                ref.parentNode.insertBefore(js, ref); 
-              }(document));
-            `
-          }}
-        />
-      </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
       </body>
     </html>

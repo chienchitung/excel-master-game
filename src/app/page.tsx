@@ -4,121 +4,278 @@ import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { BookOpen, Award, BarChart } from 'lucide-react'
+import { BookOpen, Award, BarChart, Star, Trophy, Target, Flame, FileSpreadsheet, MessageCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { lessons } from '@/data/lessons'
+import { getProgress } from '@/lib/progress'
 
 interface ProgressData {
-  completedLessons: number;
+  completedLessons: number[];
   stars: number;
+  streak: number;
+  level: number;
+  exp: number;
+  dailyGoal: number;
+  dailyProgress: number;
 }
 
 export default function HomePage() {
-  const [progress, setProgress] = useState<ProgressData>({ completedLessons: 0, stars: 0 })
+  const [progress, setProgress] = useState<ProgressData>({
+    completedLessons: [],
+    stars: 0,
+    streak: 1,
+    level: 1,
+    exp: 0,
+    dailyGoal: 50,
+    dailyProgress: 0
+  })
 
   useEffect(() => {
-    const fetchProgress = async () => {
-      const response = await new Promise<ProgressData>(resolve =>
-        setTimeout(() => resolve({ completedLessons: 2, stars: 20 }), 1000)
-      )
-      setProgress(response)
-    }
-    fetchProgress()
-  }, [])
+    const savedProgress = getProgress();
+    setProgress(prev => ({
+      ...prev,
+      ...savedProgress,
+    }));
+  }, []);
+
+  const isStarted = progress.completedLessons.length > 0;
+  const nextLessonId = isStarted ? Math.min(progress.completedLessons.length + 1, lessons.length) : 1;
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] text-[#3C3C3C]">
-      <div className="container mx-auto px-4 py-12">
-        <header className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Excel 大師挑戰</h1>
-          <p className="text-xl">踏上 Excel 技能提升之旅，成為數據分析專家！</p>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          <Card className="bg-white text-[#3C3C3C] overflow-hidden">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4 flex items-center">
-                <BookOpen className="mr-2" />
-                學習內容
-              </h2>
-              <ul className="space-y-2">
-                {lessons.map((lesson) => (
-                  <li key={lesson.id} className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-[#58CC02] text-white flex items-center justify-center mr-3">
-                      {lesson.id}
-                    </div>
-                    {lesson.title}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white text-[#3C3C3C] overflow-hidden">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4 flex items-center">
-                <Award className="mr-2" />
-                學習目標
-              </h2>
-              <ul className="space-y-2">
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-[#58CC02]" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 13l4 4L19 7"></path></svg>
-                  掌握 Excel 基礎函數
-                </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-[#58CC02]" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 13l4 4L19 7"></path></svg>
-                  學會使用 VLOOKUP 函數
-                </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-[#58CC02]" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 13l4 4L19 7"></path></svg>
-                  理解並應用 IF 條件函數
-                </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-[#58CC02]" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 13l4 4L19 7"></path></svg>
-                  創建和分析樞紐分析表
-                </li>
-                <li className="flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-[#58CC02]" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M5 13l4 4L19 7"></path></svg>
-                  綜合運用所學解決實際問題
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="bg-white text-[#3C3C3C] mb-12">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold mb-4 flex items-center">
-              <BarChart className="mr-2" />
-              學習進度
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span>總體進度</span>
-                  <span>{(progress.completedLessons / lessons.length * 100).toFixed(0)}%</span>
-                </div>
-                <Progress value={progress.completedLessons / lessons.length * 100} className="h-3" />
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span>已獲得星星</span>
-                  <span>{progress.stars} / 50</span>
-                </div>
-                <Progress value={progress.stars / 50 * 100} className="h-3" />
+    <div className="min-h-screen bg-[#F9FAFB]">
+      <header className="bg-white border-b sticky top-0 z-50">
+        <div className="container mx-auto h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors">
+            <div className="relative">
+              <FileSpreadsheet className="h-7 w-7 text-[#2B4EFF]" />
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#58CC02] rounded-full flex items-center justify-center ring-2 ring-white">
+                <span className="text-white text-xs font-bold">{progress.level}</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="text-center">
-          <Link href="/lessons">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white text-xl py-6 px-12 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105">
-              開始學習挑戰
-            </Button>
+            <span className="font-bold text-xl text-gray-900">ExcelMaster</span>
           </Link>
+
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 px-4 py-2 bg-[#F5F7FF] rounded-xl">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-[#2B4EFF]" />
+                <span className="font-semibold text-gray-900">Level {progress.level}</span>
+              </div>
+              <div className="h-5 w-px bg-gray-200" />
+              <div className="flex flex-col w-36">
+                <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
+                  <span>經驗值</span>
+                  <span>{progress.exp % 100}/100 XP</span>
+                </div>
+                <div className="relative h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="absolute top-0 left-0 h-full bg-[#2B4EFF] transition-all duration-300"
+                    style={{ width: `${progress.exp % 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 bg-[#FFF5E5] rounded-xl">
+                <Star className="h-5 w-5 text-[#FF9900] fill-[#FF9900]" />
+                <span className="font-semibold text-[#B36B00]">{progress.stars}</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-[#FFE5E5] rounded-xl">
+                <Flame className="h-5 w-5 text-[#FF4B4B]" />
+                <span className="font-semibold text-[#CC0000]">{progress.streak} 天</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 px-4">
+            <div className="flex flex-col items-end">
+              <div className="flex items-center gap-2 text-sm mb-1">
+                <span className="text-gray-500">課程進度</span>
+                <span className="font-medium">{progress.completedLessons.length}/{lessons.length}</span>
+              </div>
+              <div className="w-32 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#58CC02] transition-all duration-300"
+                  style={{ width: `${(progress.completedLessons.length / lessons.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-12">
+        <div className="max-w-4xl mx-auto">
+        {/* 歡迎區塊 */}
+        <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4 text-gray-900">
+            Excel 大師挑戰
+          </h1>
+            <p className="text-xl text-gray-600">
+            踏上 Excel 技能提升之旅，成為數據分析專家！
+          </p>
+        </div>
+
+        {/* 課程進度概覽 */}
+          <div className="grid grid-cols-3 gap-6 mb-12">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#F5F7FF] flex items-center justify-center">
+                  <BookOpen className="h-5 w-5 text-[#2B4EFF]" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">總體進度</div>
+                  <div className="text-xl font-bold text-gray-900">
+                  {Math.round((progress.completedLessons.length / lessons.length) * 100)}%
+                  </div>
+                </div>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#2B4EFF] transition-all duration-300"
+                  style={{ width: `${(progress.completedLessons.length / lessons.length) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#F5F7FF] flex items-center justify-center">
+                  <Trophy className="h-5 w-5 text-[#2B4EFF]" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">等級進度</div>
+                  <div className="text-xl font-bold text-gray-900">
+                    Level {progress.level}
+                  </div>
+                </div>
+                    </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#2B4EFF] transition-all duration-300"
+                  style={{ width: `${progress.exp % 100}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-[#FFF5E5] flex items-center justify-center">
+                  <Star className="h-5 w-5 text-[#FF9900]" />
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">星星收集</div>
+                  <div className="text-xl font-bold text-gray-900">
+                    {progress.stars}/50
+                  </div>
+                </div>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#FF9900] transition-all duration-300"
+                  style={{ width: `${(progress.stars / 50) * 100}%` }}
+                />
+              </div>
+            </div>
+        </div>
+
+          {/* 課程列表和成就 */}
+          <div className="grid grid-cols-3 gap-8">
+        {/* 課程列表 */}
+            <div className="col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-bold mb-6 text-gray-900">學習路線圖</h2>
+            <div className="space-y-4">
+                {lessons.map((lesson, index) => {
+                  const isCompleted = progress.completedLessons.includes(lesson.id);
+                  const isNext = !isCompleted && lesson.id === nextLessonId;
+                  const isLocked = lesson.id > nextLessonId;
+
+                  return (
+                    <Link 
+                      key={lesson.id} 
+                      href={isLocked ? '#' : `/lessons/${lesson.id}`}
+                      className={`block ${isLocked ? 'cursor-not-allowed' : ''}`}
+                    >
+                      <div className={`
+                        relative p-4 rounded-xl transition-all duration-200
+                        ${isCompleted 
+                          ? 'bg-[#E5FFE1] border border-[#58CC02]' 
+                          : isNext
+                            ? 'bg-[#F5F7FF] border border-[#2B4EFF]'
+                            : 'bg-gray-50 border border-gray-200'
+                        }
+                        ${!isLocked && 'hover:transform hover:translate-y-[-2px] hover:shadow-md'}
+                      `}>
+                        <div className="flex items-center gap-4">
+                          <div className={`
+                            w-10 h-10 rounded-full flex items-center justify-center
+                            ${isCompleted 
+                              ? 'bg-[#58CC02]' 
+                              : isNext
+                                ? 'bg-[#2B4EFF]'
+                                : 'bg-gray-300'
+                            }
+                            text-white font-bold
+                          `}>
+                            {lesson.id}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900">{lesson.title}</h3>
+                            <p className="text-sm text-gray-600">{lesson.description}</p>
+                          </div>
+                          {isCompleted && (
+                            <div className="flex items-center gap-2">
+                              <Star className="h-5 w-5 text-[#FF9900] fill-[#FF9900]" />
+                              <span className="font-medium">10</span>
+                            </div>
+                          )}
+                        </div>
+                </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 右側成就和開始按鈕 */}
+          <div className="space-y-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="text-xl font-bold mb-6 text-gray-900">學習成就</h2>
+                <div className="space-y-4">
+                  <div className="bg-[#FFE5E5] p-4 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-900">連續學習</h3>
+                      <div className="flex items-center gap-2">
+                        <Flame className="h-5 w-5 text-[#FF4B4B]" />
+                        <span className="font-medium text-[#CC0000]">{progress.streak} 天</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-white/50 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-[#FF4B4B] transition-all duration-300"
+                        style={{ width: `${progress.streak * 20}%` }}
+                      />
+                    </div>
+                  </div>
+            </div>
+              </div>
+
+              <div className="bg-[#2B4EFF] rounded-2xl shadow-lg p-6 text-white">
+                <h2 className="text-xl font-bold mb-4">準備好開始了嗎？</h2>
+                <p className="mb-6 text-white/90">
+                  立即開始您的 Excel 學習之旅，一步步成為數據分析專家！
+                </p>
+                <Link href={`/lessons/${nextLessonId}`}>
+                  <button className="w-full bg-white text-[#2B4EFF] hover:bg-blue-50 font-bold text-lg py-4 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
+                    {isStarted ? '繼續學習' : '開始學習'}
+                  </button>
+          </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }
