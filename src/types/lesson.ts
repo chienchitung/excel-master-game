@@ -27,9 +27,18 @@ export interface LessonProgress {
   finalAnswer?: string;
 }
 
-export interface UserProgress extends LessonProgress {
+export interface UserProgress {
+  currentLesson: number;
+  completed: boolean;
+  stars: number;
+  completedLessons: number[];
+  finalAnswer?: string;
   lastUpdated?: Date;
   totalXP?: number;
+  exp: number;
+  level: number;
+  dailyProgress: number;
+  streak: number;
 }
 
 export interface ChatMessage {

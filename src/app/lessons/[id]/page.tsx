@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { BookOpen, Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, GraduationCap, Trophy, Flame, X } from 'lucide-react'
+import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, GraduationCap, Trophy, Flame, X } from 'lucide-react'
 import { lessons } from '@/data/lessons'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useRouter } from 'next/navigation'
@@ -37,7 +37,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      content: '歡迎來到第 ' + resolvedParams.id + ' 關！我是你的 AI 助教，有任何問題都可以問我喔！',
+      content: '歡迎來到第 ' + resolvedParams.id + ' 關！我是你的 AI 助教，有任何問題都可以問我���！',
       isUser: false,
       timestamp: new Date()
     }
@@ -119,12 +119,6 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       showChat: !prev.showChat
     }));
   };
-
-  const handleStarClick = () => {
-    if (lessonState.stars >= 50) {
-      router.push('/survey')
-    }
-  }
 
   const showTabs = lessonState.currentLesson === 5 ? ['game'] : ['practice', 'content']
 
@@ -328,7 +322,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                       <h3 className="text-xl font-semibold mb-2">綜合測驗說明</h3>
                       <p className="mb-4">在這個測驗中，您需要運用前面學習的所有函數知識來解決實際問題。</p>
                       <ul className="list-disc pl-6 mb-4">
-                        <li>運用 SUM ��� AVERAGE 函數進行據統計</li>
+                        <li>運用 SUM  AVERAGE 函數進行據統計</li>
                         <li>使用 VLOOKUP 函數查找相關數據</li>
                         <li>使用 IF 函數進行條件判斷</li>
                         <li>創建樞紐分析表進行數據分析</li>

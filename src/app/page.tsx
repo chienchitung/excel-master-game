@@ -1,11 +1,8 @@
 "use client"
 
-import Link from 'next/link'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { BookOpen, Award, BarChart, Star, Trophy, Target, Flame, FileSpreadsheet, MessageCircle } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { FileSpreadsheet, Star, Flame, Trophy, BookOpen } from "lucide-react"
 import { lessons } from '@/data/lessons'
 import { getProgress } from '@/lib/progress'
 
@@ -262,7 +259,7 @@ export default function HomePage() {
               </div>
 
               <div className="bg-[#2B4EFF] rounded-2xl shadow-lg p-6 text-white">
-                <h2 className="text-xl font-bold mb-4">準備好開始了嗎？</h2>
+                <h2 className="text-xl font-bold mb-4">準備好開始嗎？</h2>
                 <p className="mb-6 text-white/90">
                   立即開始您的 Excel 學習之旅，一步步成為數據分析專家！
                 </p>
