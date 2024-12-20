@@ -2,14 +2,12 @@
 
 import { useState, useEffect, useRef, use } from "react"
 import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, GraduationCap, Trophy, Flame, X } from 'lucide-react'
 import { lessons } from '@/data/lessons'
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { State, ChatMessage } from '@/types/lesson'
@@ -37,7 +35,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      content: '歡迎來到第 ' + resolvedParams.id + ' 關！我是你的 AI 助教，有任何問題都可以問我���！',
+      content: '歡迎來到第 ' + resolvedParams.id + ' 關！我是你的 AI 助教，有任何問題都可以問我！',
       isUser: false,
       timestamp: new Date()
     }

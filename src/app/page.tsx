@@ -183,7 +183,7 @@ export default function HomePage() {
             <div className="col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-xl font-bold mb-6 text-gray-900">學習路線圖</h2>
             <div className="space-y-4">
-                {lessons.map((lesson, index) => {
+                {lessons.map((lesson) => {
                   const isCompleted = progress.completedLessons.includes(lesson.id);
                   const isNext = !isCompleted && lesson.id === nextLessonId;
                   const isLocked = lesson.id > nextLessonId;
