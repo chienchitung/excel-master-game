@@ -328,7 +328,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                       <h3 className="text-xl font-semibold mb-2">綜合測驗說明</h3>
                       <p className="mb-4">在這個測驗中，您需要運用前面學習的所有函數知識來解決實際問題。</p>
                       <ul className="list-disc pl-6 mb-4">
-                        <li>運用 SUM 和 AVERAGE 函數進行據統計</li>
+                        <li>運用 SUM ��� AVERAGE 函數進行據統計</li>
                         <li>使用 VLOOKUP 函數查找相關數據</li>
                         <li>使用 IF 函數進行條件判斷</li>
                         <li>創建樞紐分析表進行數據分析</li>

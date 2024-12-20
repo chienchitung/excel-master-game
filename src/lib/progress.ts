@@ -1,78 +1,60 @@
-import { LessonProgress } from '@/types/lesson';
+import { UserProgress } from '@/types/lesson'
 
-const PROGRESS_KEY = 'excel_master_progress';
+const PROGRESS_KEY = 'excel_master_progress'
 
-interface Progress {
-  completedLessons: number[];
-  stars: number;
-  exp: number;
-  level: number;
-  streak: number;
-  dailyProgress: number;
-  lastLoginDate?: string;
-}
-
-const defaultProgress: Progress = {
-  completedLessons: [],
-  stars: 0,
-  exp: 0,
-  level: 1,
-  streak: 1,
-  dailyProgress: 0
-};
-
-export function getProgress(): Progress {
-  if (typeof window === 'undefined') return defaultProgress;
-  
-  const saved = localStorage.getItem(PROGRESS_KEY);
-  if (!saved) return defaultProgress;
-
-  const progress = JSON.parse(saved);
-  
-  // 檢查是否是新的一天
-  const today = new Date().toDateString();
-  if (progress.lastLoginDate !== today) {
-    progress.dailyProgress = 0;
-    progress.lastLoginDate = today;
-    
-    // 檢查連續登入
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    if (progress.lastLoginDate === yesterday.toDateString()) {
-      progress.streak = (progress.streak || 1) + 1;
-    } else {
-      progress.streak = 1;
+export function getProgress(): UserProgress {
+  if (typeof window === 'undefined') {
+    return {
+      completedLessons: [],
+      stars: 0,
+      streak: 1,
+      level: 1,
+      exp: 0,
+      dailyProgress: 0,
+      currentLesson: 1,
+      completed: false
     }
-    
-    saveProgress(progress);
   }
-  
-  return progress;
+
+  const savedProgress = localStorage.getItem(PROGRESS_KEY)
+  if (!savedProgress) {
+    return {
+      completedLessons: [],
+      stars: 0,
+      streak: 1,
+      level: 1,
+      exp: 0,
+      dailyProgress: 0,
+      currentLesson: 1,
+      completed: false
+    }
+  }
+
+  return JSON.parse(savedProgress)
 }
 
-export function saveProgress(progress: Progress) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify({
-    ...progress,
-    lastLoginDate: new Date().toDateString()
-  }));
-}
-
-export function updateLessonProgress(lessonId: number, stars: number, exp: number) {
-  const progress = getProgress();
+export function updateLessonProgress(
+  lessonId: number,
+  starsEarned: number,
+  expEarned: number
+): UserProgress {
+  const currentProgress = getProgress()
   
-  if (!progress.completedLessons.includes(lessonId)) {
-    progress.completedLessons.push(lessonId);
-    progress.stars += stars;
-    progress.exp += exp;
-    progress.dailyProgress += exp;
+  if (!currentProgress.completedLessons.includes(lessonId)) {
+    currentProgress.completedLessons.push(lessonId)
+    currentProgress.stars += starsEarned
+    currentProgress.exp += expEarned
+    currentProgress.dailyProgress += expEarned
     
-    // 等級計算（每100 exp升一級）
-    progress.level = Math.floor(progress.exp / 100) + 1;
+    // Level up logic
+    const newLevel = Math.floor(currentProgress.exp / 100) + 1
+    if (newLevel > currentProgress.level) {
+      currentProgress.level = newLevel
+    }
   }
-  
-  saveProgress(progress);
-  return progress;
+
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(currentProgress))
+  return currentProgress
 }
 
 export function resetProgress() {
