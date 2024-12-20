@@ -108,7 +108,7 @@ D2: =VLOOKUP("P001", A2:C4, 3, FALSE)
     questions: [
       {
         id: 1,
-        description: "使用 VLOOKUP ���數查找產品代碼 'P002' 的單價",
+        description: "使用 VLOOKUP 函數查找產品代碼 'P002' 的單價",
         answer: "10",
         hint: "使用 =VLOOKUP(\"P002\", A2:C4, 3, FALSE)"
       }

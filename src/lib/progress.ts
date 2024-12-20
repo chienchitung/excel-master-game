@@ -4,33 +4,34 @@ const PROGRESS_KEY = 'excel_master_progress'
 
 export function getProgress(): UserProgress {
   if (typeof window === 'undefined') {
-    return {
-      completedLessons: [],
-      stars: 0,
-      streak: 1,
-      level: 1,
-      exp: 0,
-      dailyProgress: 0,
-      currentLesson: 1,
-      completed: false
-    }
+    return getInitialProgress()
   }
 
   const savedProgress = localStorage.getItem(PROGRESS_KEY)
   if (!savedProgress) {
-    return {
-      completedLessons: [],
-      stars: 0,
-      streak: 1,
-      level: 1,
-      exp: 0,
-      dailyProgress: 0,
-      currentLesson: 1,
-      completed: false
-    }
+    return getInitialProgress()
   }
 
   return JSON.parse(savedProgress)
+}
+
+export function getInitialProgress(): UserProgress {
+  return {
+    completedLessons: [],
+    stars: 0,
+    streak: 1,
+    level: 1,
+    exp: 0,
+    dailyProgress: 0,
+    currentLesson: 1,
+    completed: false
+  }
+}
+
+export function resetProgress(): UserProgress {
+  const initialProgress = getInitialProgress()
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(initialProgress))
+  return initialProgress
 }
 
 export function updateLessonProgress(
@@ -55,9 +56,4 @@ export function updateLessonProgress(
 
   localStorage.setItem(PROGRESS_KEY, JSON.stringify(currentProgress))
   return currentProgress
-}
-
-export function resetProgress() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(PROGRESS_KEY);
 } 

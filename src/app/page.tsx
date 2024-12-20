@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, Star, Flame, Trophy, BookOpen } from "lucide-react"
+import { FileSpreadsheet, Star, Flame, Trophy, BookOpen, RotateCcw } from "lucide-react"
 import { lessons } from '@/data/lessons'
-import { getProgress } from '@/lib/progress'
+import { getProgress, resetProgress } from '@/lib/progress'
+import { Button } from "@/components/ui/button"
 
 interface ProgressData {
   completedLessons: number[];
@@ -36,24 +37,33 @@ export default function HomePage() {
   }, []);
 
   const isStarted = progress.completedLessons.length > 0;
+  const isCompleted = progress.completedLessons.length === lessons.length;
   const nextLessonId = isStarted ? Math.min(progress.completedLessons.length + 1, lessons.length) : 1;
+
+  const handleReset = () => {
+    const newProgress = resetProgress();
+    setProgress(prev => ({
+      ...prev,
+      ...newProgress,
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       <header className="bg-white border-b sticky top-0 z-50">
-        <div className="container mx-auto h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors">
+        <div className="container mx-auto h-16 flex items-center justify-between px-4 md:px-6">
+          <Link href="/" className="flex items-center gap-3 py-2 hover:bg-gray-50 rounded-lg transition-colors">
             <div className="relative">
-              <FileSpreadsheet className="h-7 w-7 text-[#2B4EFF]" />
+              <FileSpreadsheet className="h-6 w-6 md:h-7 md:w-7 text-[#2B4EFF]" />
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#58CC02] rounded-full flex items-center justify-center ring-2 ring-white">
                 <span className="text-white text-xs font-bold">{progress.level}</span>
               </div>
             </div>
-            <span className="font-bold text-xl text-gray-900">ExcelMaster</span>
+            <span className="font-bold text-lg md:text-xl text-gray-900">ExcelMaster</span>
           </Link>
 
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 px-4 py-2 bg-[#F5F7FF] rounded-xl">
+          <div className="flex items-center gap-2 md:gap-6">
+            <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-[#F5F7FF] rounded-xl">
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-[#2B4EFF]" />
                 <span className="font-semibold text-gray-900">Level {progress.level}</span>
@@ -73,19 +83,19 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#FFF5E5] rounded-xl">
-                <Star className="h-5 w-5 text-[#FF9900] fill-[#FF9900]" />
-                <span className="font-semibold text-[#B36B00]">{progress.stars}</span>
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[#FFF5E5] rounded-xl">
+                <Star className="h-4 w-4 md:h-5 md:w-5 text-[#FF9900] fill-[#FF9900]" />
+                <span className="font-semibold text-[#B36B00] text-sm md:text-base">{progress.stars}</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#FFE5E5] rounded-xl">
-                <Flame className="h-5 w-5 text-[#FF4B4B]" />
-                <span className="font-semibold text-[#CC0000]">{progress.streak} 天</span>
+              <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[#FFE5E5] rounded-xl">
+                <Flame className="h-4 w-4 md:h-5 md:w-5 text-[#FF4B4B]" />
+                <span className="font-semibold text-[#CC0000] text-sm md:text-base">{progress.streak} 天</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-4">
+          <div className="hidden md:flex items-center gap-3 px-4">
             <div className="flex flex-col items-end">
               <div className="flex items-center gap-2 text-sm mb-1">
                 <span className="text-gray-500">課程進度</span>
@@ -102,20 +112,18 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-12">
+      <main className="container mx-auto px-4 py-6 md:py-12">
         <div className="max-w-4xl mx-auto">
-        {/* 歡迎區塊 */}
-        <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4 text-gray-900">
-            Excel 大師挑戰
-          </h1>
-            <p className="text-xl text-gray-600">
-            踏上 Excel 技能提升之旅，成為數據分析專家！
-          </p>
-        </div>
+          <div className="text-center mb-8 md:mb-12">
+            <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 text-gray-900">
+              Excel 大師挑戰
+            </h1>
+            <p className="text-lg md:text-xl text-gray-600">
+              踏上 Excel 技能提升之旅，成為數據分析專家！
+            </p>
+          </div>
 
-        {/* 課程進度概覽 */}
-          <div className="grid grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-[#F5F7FF] flex items-center justify-center">
@@ -178,10 +186,10 @@ export default function HomePage() {
         </div>
 
           {/* 課程列表和成就 */}
-          <div className="grid grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
         {/* 課程列表 */}
-            <div className="col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-xl font-bold mb-6 text-gray-900">學習路線圖</h2>
+            <div className="col-span-1 md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6">
+              <h2 className="text-xl font-bold mb-4 md:mb-6 text-gray-900">學習路線圖</h2>
             <div className="space-y-4">
                 {lessons.map((lesson) => {
                   const isCompleted = progress.completedLessons.includes(lesson.id);
@@ -237,8 +245,8 @@ export default function HomePage() {
 
             {/* 右側成就和開始按鈕 */}
           <div className="space-y-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-bold mb-6 text-gray-900">學習成就</h2>
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6">
+                <h2 className="text-xl font-bold mb-4 md:mb-6 text-gray-900">學習成就</h2>
                 <div className="space-y-4">
                   <div className="bg-[#FFE5E5] p-4 rounded-xl">
                     <div className="flex items-center justify-between mb-2">
@@ -258,16 +266,26 @@ export default function HomePage() {
             </div>
               </div>
 
-              <div className="bg-[#2B4EFF] rounded-2xl shadow-lg p-6 text-white">
-                <h2 className="text-xl font-bold mb-4">準備好開始嗎？</h2>
-                <p className="mb-6 text-white/90">
+              <div className="bg-[#2B4EFF] rounded-2xl shadow-lg p-4 md:p-6 text-white">
+                <h2 className="text-lg md:text-xl font-bold mb-3 md:mb-4">準備好開始嗎？</h2>
+                <p className="mb-4 md:mb-6 text-white/90 text-sm md:text-base">
                   立即開始您的 Excel 學習之旅，一步步成為數據分析專家！
                 </p>
-                <Link href={`/lessons/${nextLessonId}`}>
-                  <button className="w-full bg-white text-[#2B4EFF] hover:bg-blue-50 font-bold text-lg py-4 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
-                    {isStarted ? '繼續學習' : '開始學習'}
-                  </button>
-          </Link>
+                {isCompleted ? (
+                  <Button
+                    onClick={handleReset}
+                    className="w-full bg-white text-[#2B4EFF] hover:bg-blue-50 font-bold text-base md:text-lg py-3 md:py-4 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                  >
+                    <RotateCcw className="h-4 w-4 md:h-5 md:w-5" />
+                    重新挑戰
+                  </Button>
+                ) : (
+                  <Link href={`/lessons/${nextLessonId}`} className="block">
+                    <button className="w-full bg-white text-[#2B4EFF] hover:bg-blue-50 font-bold text-base md:text-lg py-3 md:py-4 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
+                      {isStarted ? '繼續學習' : '開始學習'}
+                    </button>
+                  </Link>
+                )}
               </div>
             </div>
           </div>

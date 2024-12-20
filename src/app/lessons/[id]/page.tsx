@@ -148,19 +148,19 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       <header className="bg-white border-b sticky top-0 z-50">
-        <div className="container mx-auto h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors">
+        <div className="container mx-auto h-16 flex items-center justify-between px-4 md:px-6">
+          <Link href="/" className="flex items-center gap-3 py-2 hover:bg-gray-50 rounded-lg transition-colors">
             <div className="relative">
-              <FileSpreadsheet className="h-7 w-7 text-[#2B4EFF]" />
+              <FileSpreadsheet className="h-6 w-6 md:h-7 md:w-7 text-[#2B4EFF]" />
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#58CC02] rounded-full flex items-center justify-center ring-2 ring-white">
                 <span className="text-white text-xs font-bold">{lessonState.level}</span>
               </div>
             </div>
-            <span className="font-bold text-xl text-gray-900">ExcelMaster</span>
+            <span className="font-bold text-lg md:text-xl text-gray-900">ExcelMaster</span>
           </Link>
 
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 px-4 py-2 bg-[#F5F7FF] rounded-xl">
+          <div className="flex items-center gap-2 md:gap-6">
+            <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-[#F5F7FF] rounded-xl">
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-[#2B4EFF]" />
                 <span className="font-semibold text-gray-900">Level {lessonState.level}</span>
@@ -180,19 +180,19 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#FFF5E5] rounded-xl">
-                <Star className="h-5 w-5 text-[#FF9900] fill-[#FF9900]" />
-                <span className="font-semibold text-[#B36B00]">{lessonState.stars}</span>
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[#FFF5E5] rounded-xl">
+                <Star className="h-4 w-4 md:h-5 md:w-5 text-[#FF9900] fill-[#FF9900]" />
+                <span className="font-semibold text-[#B36B00] text-sm md:text-base">{lessonState.stars}</span>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#FFE5E5] rounded-xl">
-                <Flame className="h-5 w-5 text-[#FF4B4B]" />
-                <span className="font-semibold text-[#CC0000]">{lessonState.streak} 天</span>
+              <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-[#FFE5E5] rounded-xl">
+                <Flame className="h-4 w-4 md:h-5 md:w-5 text-[#FF4B4B]" />
+                <span className="font-semibold text-[#CC0000] text-sm md:text-base">{lessonState.streak} 天</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 px-4">
+          <div className="hidden md:flex items-center gap-3 px-4">
             <div className="flex flex-col items-end">
               <div className="flex items-center gap-2 text-sm mb-1">
                 <span className="text-gray-500">課程進度</span>
@@ -209,31 +209,37 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 flex gap-6">
-        <main className={`transition-all duration-300 ${lessonState.showChat ? 'w-[calc(100%-24rem)]' : 'w-full'}`}>
-          <div className="mb-8">
+      <div className="container mx-auto px-4 py-6 md:py-8 flex flex-col md:flex-row gap-4 md:gap-6">
+        <main className={`transition-all duration-300 ${lessonState.showChat ? 'w-full md:w-[calc(100%-24rem)]' : 'w-full'}`}>
+          <div className="mb-6 md:mb-8">
             <div className="flex items-center gap-4 mb-4">
               <Link 
                 href="/"
                 className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
               >
-                <ChevronLeft className="h-5 w-5" />
-                <span>返回課程</span>
+                <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-sm md:text-base">返回課程</span>
               </Link>
               <div className="h-4 w-px bg-gray-200" />
-              <Badge variant="outline" className="bg-blue-600 text-white border-0">
+              <Badge variant="outline" className="bg-blue-600 text-white border-0 text-sm md:text-base">
                 第 {lessonState.currentLesson} 關
               </Badge>
             </div>
-            <h1 className="text-2xl font-bold mb-2">{currentLesson?.title}</h1>
-            <p className="text-gray-600">{currentLesson?.description}</p>
+            <h1 className="text-xl md:text-2xl font-bold mb-2">{currentLesson?.title}</h1>
+            <p className="text-sm md:text-base text-gray-600">{currentLesson?.description}</p>
           </div>
 
-          <Tabs ref={tabsRef} defaultValue={lessonState.currentLesson === 5 ? 'game' : 'content'} className="mb-8">
+          <Tabs ref={tabsRef} defaultValue={lessonState.currentLesson === 5 ? 'game' : 'content'} className="mb-6 md:mb-8">
             <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${showTabs.length}, 1fr)` }}>
-              {showTabs.includes('content') && <TabsTrigger value="content">課程內容</TabsTrigger>}
-              {showTabs.includes('practice') && <TabsTrigger value="practice">互動練習</TabsTrigger>}
-              {showTabs.includes('game') && <TabsTrigger value="game">遊戲關卡</TabsTrigger>}
+              {showTabs.includes('content') && (
+                <TabsTrigger value="content" className="text-sm md:text-base">課程內容</TabsTrigger>
+              )}
+              {showTabs.includes('practice') && (
+                <TabsTrigger value="practice" className="text-sm md:text-base">互動練習</TabsTrigger>
+              )}
+              {showTabs.includes('game') && (
+                <TabsTrigger value="game" className="text-sm md:text-base">遊戲關卡</TabsTrigger>
+              )}
             </TabsList>
             
             {showTabs.includes('content') && (
@@ -318,7 +324,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                   {lessonState.currentLesson === 5 && (
                     <div className="mb-4">
                       <h3 className="text-xl font-semibold mb-2">綜合測驗說明</h3>
-                      <p className="mb-4">在這個測驗中，您需要運用前面學習的所有函數知識來解決實際問題。</p>
+                      <p className="mb-4">在這個測驗中，您需要運用前面學���的所有函數知識來解決實際問題。</p>
                       <ul className="list-disc pl-6 mb-4">
                         <li>運用 SUM  AVERAGE 函數進行據統計</li>
                         <li>使用 VLOOKUP 函數查找相關數據</li>
@@ -380,7 +386,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 <Link href="/">
                   <Button 
                     variant="outline" 
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm md:text-base"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     回到首頁
@@ -389,7 +395,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               ) : (
                 <Button 
                   variant="outline" 
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 text-sm md:text-base"
                   onClick={handlePrevLesson}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -400,7 +406,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             <div className="flex-1">
               {lessonState.currentLesson !== 5 && (
                 <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 ml-auto"
+                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 ml-auto text-sm md:text-base"
                   onClick={handleNextLesson}
                 >
                   下一關
@@ -414,9 +420,12 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         {/* AI 助教側邊面板 */}
         <div 
           className={`
-            fixed top-[4rem] right-0 h-[calc(100vh-4rem)] bg-white border-l
-            transition-all duration-300 shadow-lg
-            ${lessonState.showChat ? 'translate-x-0 w-96' : 'translate-x-full w-0'}
+            fixed inset-0 md:inset-auto md:top-[4rem] md:right-0 md:h-[calc(100vh-4rem)] 
+            bg-white border-l z-50 transition-all duration-300
+            ${lessonState.showChat 
+              ? 'translate-x-0 w-full md:w-96' 
+              : 'translate-x-full w-full md:w-0'
+            }
           `}
         >
           <div className="h-full flex flex-col">
@@ -453,6 +462,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                         ? 'bg-[#2B4EFF] text-white' 
                         : 'bg-gray-100 text-gray-900'
                       }
+                      text-sm md:text-base
                     `}>
                       {message.content}
                     </div>
@@ -469,11 +479,11 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="輸入您的問題..."
-                  className="flex-1 px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent"
+                  className="flex-1 px-4 py-2 border rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent"
                 />
                 <Button 
                   onClick={handleSendMessage}
-                  className="bg-[#2B4EFF] hover:bg-blue-700 text-white rounded-xl px-6"
+                  className="bg-[#2B4EFF] hover:bg-blue-700 text-white rounded-xl px-4 md:px-6 text-sm md:text-base"
                 >
                   發送
                 </Button>
@@ -489,13 +499,13 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             className="
               fixed right-4 bottom-4 z-50
               bg-[#2B4EFF] hover:bg-blue-700 text-white 
-              rounded-full w-14 h-14 shadow-lg 
+              rounded-full w-12 h-12 md:w-14 md:h-14 shadow-lg 
               flex items-center justify-center
               transition-opacity duration-300
             "
           >
-            <MessageCircle className="h-6 w-6" />
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#FF4B4B] rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white">
+            <MessageCircle className="h-5 w-5 md:h-6 md:w-6" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-[#FF4B4B] rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white">
               1
             </span>
           </Button>
