@@ -132,152 +132,178 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
 
   const handleAnswerSubmit = async () => {
-    const currentQuestion = lessons.find(lesson => lesson.id === lessonState.currentLesson)?.questions?.[0];
-    if (!currentQuestion) return;
+    try {
+      const currentQuestion = lessons.find(lesson => lesson.id === lessonState.currentLesson)?.questions?.[0];
+      if (!currentQuestion) {
+        console.error('Question not found');
+        return;
+      }
 
-    const isCorrect = lessonState.answer.toLowerCase() === currentQuestion.answer.toLowerCase();
-    
-    // 更新提交狀態
-    setLessonState(prev => ({
-      ...prev,
-      hasSubmitted: true,
-      isCorrect: isCorrect
-    }));
-    
-    // 正確處理 UTC+8 時間
-    const now = new Date();
-    const currentTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
-      .toISOString()
-      .replace('Z', '+08:00');
-    
-    setCompletionTime(currentTime);
+      const isCorrect = lessonState.answer.toLowerCase() === currentQuestion.answer.toLowerCase();
+      
+      // 更新提交狀態
+      setLessonState(prev => ({
+        ...prev,
+        hasSubmitted: true,
+        isCorrect: isCorrect
+      }));
+      
+      // 正確處理 UTC+8 時間
+      const now = new Date();
+      const currentTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
+        .toISOString()
+        .replace('Z', '+08:00');
+      
+      console.log('Current time:', currentTime);
+      setCompletionTime(currentTime);
 
-    // 如果答案錯誤，允許重新提交
-    if (!isCorrect) {
-      setTimeout(() => {
-        setLessonState(prev => ({
-          ...prev,
-          hasSubmitted: false
-        }));
-      }, 1500); // 1.5秒後重置提交狀態
-      return;
-    }
+      // 如果答案錯誤，允許重新提交
+      if (!isCorrect) {
+        setTimeout(() => {
+          setLessonState(prev => ({
+            ...prev,
+            hasSubmitted: false
+          }));
+        }, 1500);
+        return;
+      }
 
-    if (!lessonState.completedLessons.includes(lessonState.currentLesson)) {
-      try {
+      if (!lessonState.completedLessons.includes(lessonState.currentLesson)) {
         const studentId = localStorage.getItem('student_id');
         const studentName = localStorage.getItem('student_name');
 
         // 確保有學生ID和姓名
         if (!studentId || !studentName) {
           console.error('Missing student information:', { studentId, studentName });
-          throw new Error('Missing student information');
+          alert('請先輸入學號和姓名');
+          return;
         }
 
         // 獲取關卡開始時間
         const startTime = localStorage.getItem(`lesson_${lessonState.currentLesson}_start_time`);
         if (!startTime) {
           console.error('Missing lesson start time');
-          throw new Error('Missing lesson start time');
+          // 如果沒有開始時間，重新設置
+          const newStartTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
+            .toISOString()
+            .replace('Z', '+08:00');
+          localStorage.setItem(`lesson_${lessonState.currentLesson}_start_time`, newStartTime);
+          return;
         }
 
-        // 計算花費時間（秒）
-        const startDate = new Date(startTime);
-        const endDate = new Date(currentTime);
-        const timeSpentSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
-
-        console.log('Saving learning record:', {
-          student_id: studentId,
-          student_name: studentName,
-          lesson_id: lessonState.currentLesson,
-          started_at: startTime,
-          completed_at: currentTime,
-          time_spent_seconds: timeSpentSeconds
-        });
-
-        // 儲存學習記錄到 Supabase
-        await saveLearningRecord({
-          student_id: studentId,
-          student_name: studentName,
-          lesson_id: lessonState.currentLesson,
-          started_at: startTime,
-          completed_at: currentTime,
-          time_spent_seconds: timeSpentSeconds
-        });
-
-        // 如果是第五關且答案正確，計算完成時間並記錄到排行榜
-        if (lessonState.currentLesson === 5) {
-          const startTime = localStorage.getItem('start_time');
-          if (!startTime) {
-            console.error('Missing start time');
-            throw new Error('Missing start time');
-          }
-
+        try {
+          // 計算花費時間（秒）
           const startDate = new Date(startTime);
           const endDate = new Date(currentTime);
-          const totalTimeInSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
-          const minutes = Math.floor(totalTimeInSeconds / 60);
-          const seconds = totalTimeInSeconds % 60;
-          const timeString = `${minutes}分${seconds}秒`;
-          
-          // 儲存到 localStorage
-          localStorage.setItem('completion_time', timeString);
-          localStorage.setItem('completion_time_seconds', totalTimeInSeconds.toString());
-          setCompletionTime(timeString);
+          const timeSpentSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
 
-          const leaderboardEntry = {
+          console.log('Saving learning record:', {
             student_id: studentId,
             student_name: studentName,
-            completion_time_seconds: totalTimeInSeconds,
-            completion_time_string: timeString,
-            stars_earned: 50,
-            completed_at: currentTime
-          };
+            lesson_id: lessonState.currentLesson,
+            started_at: startTime,
+            completed_at: currentTime,
+            time_spent_seconds: timeSpentSeconds
+          });
 
-          console.log('Preparing to save leaderboard entry:', leaderboardEntry);
-          
-          try {
-            const result = await saveLeaderboardEntry(leaderboardEntry);
-            console.log('Successfully saved leaderboard entry:', result);
-            
-            // 獲取玩家排名
-            const rank = await getPlayerRank(studentId);
-            setPlayerRank(rank);
-            
-            // 重新獲取排行榜數據
-            const stats = await getLeaderboardStats();
-            setLeaderboardStats(stats);
-          } catch (error) {
-            console.error('Failed to save leaderboard entry:', error);
-            throw error;
+          // 儲存學習記錄到 Supabase
+          await saveLearningRecord({
+            student_id: studentId,
+            student_name: studentName,
+            lesson_id: lessonState.currentLesson,
+            started_at: startTime,
+            completed_at: currentTime,
+            time_spent_seconds: timeSpentSeconds
+          });
+
+          // 如果是第五關且答案正確，計算完成時間並記錄到排行榜
+          if (lessonState.currentLesson === 5) {
+            const gameStartTime = localStorage.getItem('start_time');
+            if (!gameStartTime) {
+              console.error('Missing game start time');
+              alert('無法取得遊戲開始時間，請重新開始遊戲');
+              return;
+            }
+
+            try {
+              const startDate = new Date(gameStartTime);
+              const endDate = new Date(currentTime);
+              const totalTimeInSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
+              
+              console.log('Calculating completion time:', {
+                startDate,
+                endDate,
+                totalTimeInSeconds
+              });
+
+              const minutes = Math.floor(totalTimeInSeconds / 60);
+              const seconds = totalTimeInSeconds % 60;
+              const timeString = `${minutes}分${seconds}秒`;
+              
+              // 儲存到 localStorage
+              localStorage.setItem('completion_time', timeString);
+              localStorage.setItem('completion_time_seconds', totalTimeInSeconds.toString());
+              setCompletionTime(timeString);
+
+              const leaderboardEntry = {
+                student_id: studentId,
+                student_name: studentName,
+                completion_time_seconds: totalTimeInSeconds,
+                completion_time_string: timeString,
+                stars_earned: 50,
+                completed_at: currentTime
+              };
+
+              console.log('Preparing to save leaderboard entry:', leaderboardEntry);
+              
+              const result = await saveLeaderboardEntry(leaderboardEntry);
+              console.log('Successfully saved leaderboard entry:', result);
+              
+              // 獲取玩家排名
+              const rank = await getPlayerRank(studentId);
+              setPlayerRank(rank);
+
+              // 重新獲取排行榜數據
+              const stats = await getLeaderboardStats();
+              setLeaderboardStats(stats);
+            } catch (error) {
+              console.error('Error in leaderboard operations:', error);
+              alert('排行榜更新失敗，但您的進度已保存');
+            }
           }
-        }
 
-        // 每個問題固定獎勵 10 星星
-        const updatedStars = lessonState.stars + 10;
-        
-        const updatedProgress = updateLessonProgress(
-          lessonState.currentLesson,
-          10, // 星星獎勵
-          20  // 經驗值獎勵
-        );
-        
-        setLessonState(prev => ({
-          ...prev,
-          stars: updatedStars,
-          completedLessons: updatedProgress.completedLessons,
-          exp: updatedProgress.exp,
-          level: updatedProgress.level,
-          dailyProgress: updatedProgress.dailyProgress
-        }));
-      } catch (error) {
-        console.error('Failed to save record:', error);
-        // 發生錯誤時重置提交狀態
-        setLessonState(prev => ({
-          ...prev,
-          hasSubmitted: false
-        }));
+          // 更新進度
+          const updatedStars = lessonState.stars + 10;
+          const updatedProgress = updateLessonProgress(
+            lessonState.currentLesson,
+            10, // 星星獎勵
+            20  // 經驗值獎勵
+          );
+          
+          setLessonState(prev => ({
+            ...prev,
+            stars: updatedStars,
+            completedLessons: updatedProgress.completedLessons,
+            exp: updatedProgress.exp,
+            level: updatedProgress.level,
+            dailyProgress: updatedProgress.dailyProgress
+          }));
+        } catch (error) {
+          console.error('Error saving records:', error);
+          alert('保存記錄時發生錯誤，請稍後再試');
+          setLessonState(prev => ({
+            ...prev,
+            hasSubmitted: false
+          }));
+        }
       }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('發生未預期的錯誤，請重新整理頁面後再試');
+      setLessonState(prev => ({
+        ...prev,
+        hasSubmitted: false
+      }));
     }
   };
 
