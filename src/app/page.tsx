@@ -8,6 +8,7 @@ import { getProgress, resetProgress } from '@/lib/progress'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
+import { getLeaderboardStats, getPlayerRank } from '@/lib/supabase'
 
 interface ProgressData {
   completedLessons: number[];
@@ -36,6 +37,12 @@ export default function HomePage() {
   const [studentName, setStudentName] = useState("");
   const [hasStudentId, setHasStudentId] = useState(false);
   const [completionTime, setCompletionTime] = useState<string | null>(null);
+  const [playerRank, setPlayerRank] = useState<number | null>(null);
+  const [leaderboardStats, setLeaderboardStats] = useState({
+    total_participants: 0,
+    fastest_time: '--:--',
+    average_time: '--:--'
+  });
   const router = useRouter();
 
   useEffect(() => {
@@ -49,7 +56,30 @@ export default function HomePage() {
     }));
     setHasStudentId(!!savedStudentId);
     setCompletionTime(savedCompletionTime);
+
+    // 如果有學號且完成時間，獲取排名
+    if (savedStudentId && savedCompletionTime) {
+      getPlayerRank(savedStudentId)
+        .then(rank => {
+          setPlayerRank(rank);
+        })
+        .catch(error => {
+          console.error('Failed to fetch player rank:', error);
+        });
+    }
   }, []);
+  
+  useEffect(() => {
+    if (showLeaderboardDialog) {
+      getLeaderboardStats()
+        .then(stats => {
+          setLeaderboardStats(stats);
+        })
+        .catch(error => {
+          console.error('Failed to fetch leaderboard stats:', error);
+        });
+    }
+  }, [showLeaderboardDialog]);
 
   const isStarted = progress.completedLessons.length > 0;
   const isCompleted = progress.completedLessons.length === lessons.length;
@@ -343,7 +373,7 @@ export default function HomePage() {
                   <div className="flex items-center justify-between p-3 bg-[#F5F7FF] rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#2B4EFF] flex items-center justify-center text-white font-bold">
-                        12
+                        {playerRank || '--'}
                       </div>
                       <div>
                         <div className="font-medium">您的排名</div>
@@ -449,15 +479,15 @@ export default function HomePage() {
             {/* 排行榜統計資訊 */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-[#F5F7FF] rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-[#2B4EFF]">0</div>
+                <div className="text-2xl font-bold text-[#2B4EFF]">{leaderboardStats.total_participants}</div>
                 <div className="text-sm text-gray-500">參與人數</div>
               </div>
               <div className="bg-[#FFF5E5] rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-[#FF9900]">--:--</div>
+                <div className="text-2xl font-bold text-[#FF9900]">{leaderboardStats.fastest_time}</div>
                 <div className="text-sm text-gray-500">最快紀錄</div>
               </div>
               <div className="bg-[#E5FFE1] rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-[#58CC02]">--:--</div>
+                <div className="text-2xl font-bold text-[#58CC02]">{leaderboardStats.average_time}</div>
                 <div className="text-sm text-gray-500">平均時間</div>
               </div>
             </div>
@@ -467,6 +497,11 @@ export default function HomePage() {
               <div className="text-center text-gray-500 py-8">
                 目前還沒有完成紀錄
               </div>
+              {leaderboardStats.total_participants === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  目前還沒有完成紀錄
+                </div>
+              ) : null}
             </div>
           </div>
         </DialogContent>
