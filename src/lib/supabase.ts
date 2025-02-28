@@ -22,7 +22,7 @@ export interface LeaderboardEntry {
   completion_time_seconds: number
   completion_time_string: string
   completed_at: string
-  created_at: string
+  started_at: string
   stars_earned: number
   rank?: number
 }
@@ -48,8 +48,15 @@ export async function saveLearningRecord(record: Omit<LearningRecord, 'id'>) {
   return data
 }
 
-export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 'rank' | 'created_at'>) {
+export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 'rank' | 'started_at'>) {
   try {
+    // 從 localStorage 獲取開始時間
+    const startTime = localStorage.getItem('start_time');
+    if (!startTime) {
+      console.error('Missing start time in localStorage');
+      throw new Error('Missing start time');
+    }
+
     // 檢查用戶是否已經有記錄
     const { data: existingData, error: existingError } = await supabase
       .from('leaderboard')
@@ -68,7 +75,7 @@ export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 
         .from('leaderboard')
         .insert([{
           ...entry,
-          created_at: entry.completed_at // 使用 completed_at 作為 created_at
+          started_at: startTime // 使用開始學習時的時間
         }])
         .select();
 
@@ -88,7 +95,7 @@ export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 
           .from('leaderboard')
           .insert([{
             ...entry,
-            created_at: entry.completed_at // 使用 completed_at 作為 created_at
+            started_at: startTime // 使用開始學習時的時間
           }])
           .select();
 
