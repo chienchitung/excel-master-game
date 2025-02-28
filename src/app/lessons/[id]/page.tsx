@@ -13,13 +13,22 @@ import Link from 'next/link'
 import { State, ChatMessage } from '@/types/lesson'
 import { getProgress, updateLessonProgress } from '@/lib/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank } from '@/lib/supabase'
+import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats } from '@/lib/supabase'
 
 export default function ExcelLearningPlatform({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const [showRewardDialog, setShowRewardDialog] = useState(false);
   const [completionTime, setCompletionTime] = useState<string | null>(null);
   const [playerRank, setPlayerRank] = useState<number | null>(null);
+  const [leaderboardStats, setLeaderboardStats] = useState<{
+    total_participants: number;
+    fastest_time: string;
+    average_time: string;
+  }>({
+    total_participants: 0,
+    fastest_time: '--:--',
+    average_time: '--:--'
+  });
   const [lessonState, setLessonState] = useState<State>({
     currentLesson: parseInt(resolvedParams.id),
     completed: false,
@@ -55,12 +64,21 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       streak: progress.streak || 1
     }));
 
-    // 讀取完成時間
+    // 讀取完成時間和排行榜統計
     if (showRewardDialog) {
       const savedTime = localStorage.getItem('completion_time');
       if (savedTime) {
         setCompletionTime(savedTime);
       }
+
+      // 獲取排行榜統計數據
+      getLeaderboardStats()
+        .then(stats => {
+          setLeaderboardStats(stats);
+        })
+        .catch(error => {
+          console.error('Failed to fetch leaderboard stats:', error);
+        });
     }
   }, [resolvedParams.id, showRewardDialog]);
 
@@ -111,9 +129,12 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     if (isCorrect && !lessonState.completedLessons.includes(lessonState.currentLesson)) {
       // 儲存學習記錄到 Supabase
       try {
+        const studentId = localStorage.getItem('student_id') || 'guest';
+        const studentName = localStorage.getItem('student_name') || '訪客';
+
         await saveLearningRecord({
-          student_id: localStorage.getItem('student_id') || 'guest',
-          student_name: localStorage.getItem('student_name') || '訪客',
+          student_id: studentId,
+          student_name: studentName,
           lesson_id: lessonState.currentLesson,
           completed_at: currentTime
         });
@@ -133,18 +154,18 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             localStorage.setItem('completion_time_seconds', totalTimeInSeconds.toString());
             setCompletionTime(timeString);
 
-            // 儲存到排行榜
-            const leaderboardEntry = await saveLeaderboardEntry({
-              student_id: localStorage.getItem('student_id') || 'guest',
-              student_name: localStorage.getItem('student_name') || '訪客',
+            // 儲存到排行榜，設定總星星數為 50（5關 x 10星星）
+            await saveLeaderboardEntry({
+              student_id: studentId,
+              student_name: studentName,
               completion_time_seconds: totalTimeInSeconds,
               completion_time_string: timeString,
-              stars_earned: lessonState.stars,
+              stars_earned: 50, // 修正為固定 50 顆星星
               completed_at: currentTime
             });
 
             // 獲取玩家排名
-            const rank = await getPlayerRank(totalTimeInSeconds);
+            const rank = await getPlayerRank(studentId);
             setPlayerRank(rank);
           }
         }
@@ -785,16 +806,35 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               <div className="space-y-4 text-base text-muted-foreground">
                 <div>恭喜完成所有課程！</div>
                 {completionTime && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#2B4EFF] font-semibold">
-                      完成時間：{completionTime}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#F5F7FF] rounded-lg">
-                      <Trophy className="h-4 w-4 text-[#2B4EFF]" />
-                      <span className="text-sm font-medium text-[#2B4EFF]">
-                        排名 #{playerRank || '計算中...'}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#2B4EFF] font-semibold">
+                        完成時間：{completionTime}
                       </span>
-                    </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-[#F5F7FF] rounded-lg">
+                        <Trophy className="h-4 w-4 text-[#2B4EFF]" />
+                        <span className="text-sm font-medium text-[#2B4EFF]">
+                          第 {playerRank || '...'} 名
+                        </span>
+                      </span>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl space-y-3">
+                      <h3 className="font-semibold text-gray-900">完成時間排行榜</h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center">
+                          <div className="text-sm text-gray-500">參與人數</div>
+                          <div className="font-bold text-[#2B4EFF]">{leaderboardStats.total_participants}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-sm text-gray-500">最快紀錄</div>
+                          <div className="font-bold text-[#58CC02]">{leaderboardStats.fastest_time}</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-sm text-gray-500">平均時間</div>
+                          <div className="font-bold text-[#FF9900]">{leaderboardStats.average_time}</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
                 <div>您可以使用 50 顆星星兌換特別獎勵。</div>

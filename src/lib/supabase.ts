@@ -25,6 +25,12 @@ export interface LeaderboardEntry {
   rank?: number
 }
 
+export interface LeaderboardStats {
+  total_participants: number;
+  fastest_time: string;
+  average_time: string;
+}
+
 export async function saveLearningRecord(record: Omit<LearningRecord, 'id' | 'created_at'>) {
   const { data, error } = await supabase
     .from('learning_records')
@@ -68,16 +74,55 @@ export async function getLeaderboard(limit: number = 10): Promise<LeaderboardEnt
   return data || []
 }
 
-export async function getPlayerRank(completion_time_seconds: number): Promise<number> {
-  const { count, error } = await supabase
+export async function getPlayerRank(student_id: string): Promise<number> {
+  const { data, error } = await supabase
     .from('leaderboard')
-    .select('*', { count: 'exact', head: true })
-    .lt('completion_time_seconds', completion_time_seconds)
+    .select('*')
+    .order('completion_time_seconds', { ascending: true });
 
   if (error) {
-    console.error('Error getting player rank:', error)
-    throw error
+    console.error('Error getting player rank:', error);
+    throw error;
   }
 
-  return (count || 0) + 1
+  if (!data) return 0;
+
+  // Find the index of the player's record
+  const playerIndex = data.findIndex(record => record.student_id === student_id);
+  return playerIndex === -1 ? 0 : playerIndex + 1;
+}
+
+export async function getLeaderboardStats(): Promise<LeaderboardStats> {
+  const { data, error } = await supabase
+    .from('leaderboard')
+    .select('completion_time_seconds, completion_time_string')
+    .order('completion_time_seconds', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching leaderboard stats:', error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) {
+    return {
+      total_participants: 0,
+      fastest_time: '--:--',
+      average_time: '--:--'
+    };
+  }
+
+  const totalParticipants = data.length;
+  const fastestTime = data[0].completion_time_string;
+  const averageSeconds = Math.floor(
+    data.reduce((sum, record) => sum + record.completion_time_seconds, 0) / totalParticipants
+  );
+  const averageMinutes = Math.floor(averageSeconds / 60);
+  const averageRemainingSeconds = averageSeconds % 60;
+  const averageTime = `${averageMinutes}分${averageRemainingSeconds}秒`;
+
+  return {
+    total_participants: totalParticipants,
+    fastest_time: fastestTime,
+    average_time: averageTime
+  };
 } 
