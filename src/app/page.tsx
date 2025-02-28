@@ -520,7 +520,7 @@ export default function HomePage() {
                     <div>排名</div>
                     <div>學號</div>
                     <div>姓名</div>
-                    <div className="col-span-2">完成時間</div>
+                    <div className="col-span-2">最佳完成時間</div>
                   </div>
                   {/* 排行榜數據 */}
                   {leaderboardStats.rankings.map((entry, index) => (
