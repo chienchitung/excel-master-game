@@ -71,6 +71,16 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         setCompletionTime(savedTime);
       }
 
+      // 獲取玩家排名
+      const studentId = localStorage.getItem('student_id') || 'guest';
+      getPlayerRank(studentId)
+        .then(rank => {
+          setPlayerRank(rank);
+        })
+        .catch(error => {
+          console.error('Failed to fetch player rank:', error);
+        });
+
       // 獲取排行榜統計數據
       getLeaderboardStats()
         .then(stats => {
@@ -113,10 +123,20 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
 
   const handleAnswerSubmit = async () => {
+    // 防止重複提交
+    if (lessonState.hasSubmitted) return;
+    
     const currentQuestion = lessons.find(lesson => lesson.id === lessonState.currentLesson)?.questions?.[0];
     if (!currentQuestion) return;
 
     const isCorrect = lessonState.answer.toLowerCase() === currentQuestion.answer.toLowerCase();
+    
+    // 先更新提交狀態，防止重複提交
+    setLessonState(prev => ({
+      ...prev,
+      hasSubmitted: true,
+      isCorrect: isCorrect
+    }));
     
     // 正確處理 UTC+8 時間
     const now = new Date();
@@ -127,11 +147,11 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     setCompletionTime(currentTime);
 
     if (isCorrect && !lessonState.completedLessons.includes(lessonState.currentLesson)) {
-      // 儲存學習記錄到 Supabase
       try {
         const studentId = localStorage.getItem('student_id') || 'guest';
         const studentName = localStorage.getItem('student_name') || '訪客';
 
+        // 儲存學習記錄到 Supabase
         await saveLearningRecord({
           student_id: studentId,
           student_name: studentName,
@@ -154,50 +174,54 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             localStorage.setItem('completion_time_seconds', totalTimeInSeconds.toString());
             setCompletionTime(timeString);
 
-            // 儲存到排行榜，設定總星星數為 50（5關 x 10星星）
-            await saveLeaderboardEntry({
-              student_id: studentId,
-              student_name: studentName,
-              completion_time_seconds: totalTimeInSeconds,
-              completion_time_string: timeString,
-              stars_earned: 50, // 修正為固定 50 顆星星
-              completed_at: currentTime
-            });
-
-            // 獲取玩家排名
-            const rank = await getPlayerRank(studentId);
-            setPlayerRank(rank);
+            // 確保只提交一次排行榜記錄
+            const hasSubmittedToLeaderboard = localStorage.getItem('leaderboard_submitted');
+            if (!hasSubmittedToLeaderboard) {
+              // 儲存到排行榜
+              await saveLeaderboardEntry({
+                student_id: studentId,
+                student_name: studentName,
+                completion_time_seconds: totalTimeInSeconds,
+                completion_time_string: timeString,
+                stars_earned: 50,
+                completed_at: currentTime
+              });
+              
+              // 標記已提交排行榜
+              localStorage.setItem('leaderboard_submitted', 'true');
+              
+              // 獲取玩家排名
+              const rank = await getPlayerRank(studentId);
+              setPlayerRank(rank);
+            }
           }
         }
+
+        // 每個問題固定獎勵 10 星星
+        const updatedStars = lessonState.stars + 10;
+        
+        const updatedProgress = updateLessonProgress(
+          lessonState.currentLesson,
+          10, // 星星獎勵
+          20  // 經驗值獎勵
+        );
+        
+        setLessonState(prev => ({
+          ...prev,
+          stars: updatedStars,
+          completedLessons: updatedProgress.completedLessons,
+          exp: updatedProgress.exp,
+          level: updatedProgress.level,
+          dailyProgress: updatedProgress.dailyProgress
+        }));
       } catch (error) {
         console.error('Failed to save record:', error);
+        // 發生錯誤時重置提交狀態
+        setLessonState(prev => ({
+          ...prev,
+          hasSubmitted: false
+        }));
       }
-
-      // 每個問題固定獎勵 10 星星
-      const updatedStars = lessonState.stars + 10;
-      
-      const updatedProgress = updateLessonProgress(
-        lessonState.currentLesson,
-        10, // 星星獎勵
-        20  // 經驗值獎勵
-      );
-      
-      setLessonState(prev => ({
-        ...prev,
-        isCorrect: true,
-        hasSubmitted: true,
-        stars: updatedStars,
-        completedLessons: updatedProgress.completedLessons,
-        exp: updatedProgress.exp,
-        level: updatedProgress.level,
-        dailyProgress: updatedProgress.dailyProgress
-      }));
-    } else {
-      setLessonState(prev => ({
-        ...prev,
-        isCorrect: false,
-        hasSubmitted: true
-      }));
     }
   };
 
