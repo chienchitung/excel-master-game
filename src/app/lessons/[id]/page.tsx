@@ -123,15 +123,12 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
 
   const handleAnswerSubmit = async () => {
-    // 防止重複提交
-    if (lessonState.hasSubmitted) return;
-    
     const currentQuestion = lessons.find(lesson => lesson.id === lessonState.currentLesson)?.questions?.[0];
     if (!currentQuestion) return;
 
     const isCorrect = lessonState.answer.toLowerCase() === currentQuestion.answer.toLowerCase();
     
-    // 先更新提交狀態，防止重複提交
+    // 更新提交狀態
     setLessonState(prev => ({
       ...prev,
       hasSubmitted: true,
@@ -146,10 +143,34 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     
     setCompletionTime(currentTime);
 
-    if (isCorrect && !lessonState.completedLessons.includes(lessonState.currentLesson)) {
+    // 如果答案錯誤，允許重新提交
+    if (!isCorrect) {
+      setTimeout(() => {
+        setLessonState(prev => ({
+          ...prev,
+          hasSubmitted: false
+        }));
+      }, 1500); // 1.5秒後重置提交狀態
+      return;
+    }
+
+    if (!lessonState.completedLessons.includes(lessonState.currentLesson)) {
       try {
-        const studentId = localStorage.getItem('student_id') || 'guest';
-        const studentName = localStorage.getItem('student_name') || '訪客';
+        const studentId = localStorage.getItem('student_id');
+        const studentName = localStorage.getItem('student_name');
+
+        // 確保有學生ID和姓名
+        if (!studentId || !studentName) {
+          console.error('Missing student information:', { studentId, studentName });
+          throw new Error('Missing student information');
+        }
+
+        console.log('Saving learning record:', {
+          student_id: studentId,
+          student_name: studentName,
+          lesson_id: lessonState.currentLesson,
+          completed_at: currentTime
+        });
 
         // 儲存學習記錄到 Supabase
         await saveLearningRecord({
@@ -162,38 +183,47 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         // 如果是第五關且答案正確，計算完成時間並記錄到排行榜
         if (lessonState.currentLesson === 5) {
           const startTime = localStorage.getItem('start_time');
-          if (startTime) {
-            const endTime = Date.now();
-            const totalTimeInSeconds = Math.floor((endTime - parseInt(startTime)) / 1000);
-            const minutes = Math.floor(totalTimeInSeconds / 60);
-            const seconds = totalTimeInSeconds % 60;
-            const timeString = `${minutes}分${seconds}秒`;
-            
-            // 儲存到 localStorage
-            localStorage.setItem('completion_time', timeString);
-            localStorage.setItem('completion_time_seconds', totalTimeInSeconds.toString());
-            setCompletionTime(timeString);
+          if (!startTime) {
+            console.error('Missing start time');
+            throw new Error('Missing start time');
+          }
 
-            // 確保只提交一次排行榜記錄
-            const hasSubmittedToLeaderboard = localStorage.getItem('leaderboard_submitted');
-            if (!hasSubmittedToLeaderboard) {
-              // 儲存到排行榜
-              await saveLeaderboardEntry({
-                student_id: studentId,
-                student_name: studentName,
-                completion_time_seconds: totalTimeInSeconds,
-                completion_time_string: timeString,
-                stars_earned: 50,
-                completed_at: currentTime
-              });
-              
-              // 標記已提交排行榜
-              localStorage.setItem('leaderboard_submitted', 'true');
-              
-              // 獲取玩家排名
-              const rank = await getPlayerRank(studentId);
-              setPlayerRank(rank);
-            }
+          const endTime = Date.now();
+          const totalTimeInSeconds = Math.floor((endTime - parseInt(startTime)) / 1000);
+          const minutes = Math.floor(totalTimeInSeconds / 60);
+          const seconds = totalTimeInSeconds % 60;
+          const timeString = `${minutes}分${seconds}秒`;
+          
+          // 儲存到 localStorage
+          localStorage.setItem('completion_time', timeString);
+          localStorage.setItem('completion_time_seconds', totalTimeInSeconds.toString());
+          setCompletionTime(timeString);
+
+          const leaderboardEntry = {
+            student_id: studentId,
+            student_name: studentName,
+            completion_time_seconds: totalTimeInSeconds,
+            completion_time_string: timeString,
+            stars_earned: 50,
+            completed_at: currentTime
+          };
+
+          console.log('Preparing to save leaderboard entry:', leaderboardEntry);
+          
+          try {
+            const result = await saveLeaderboardEntry(leaderboardEntry);
+            console.log('Successfully saved leaderboard entry:', result);
+            
+            // 獲取玩家排名
+            const rank = await getPlayerRank(studentId);
+            setPlayerRank(rank);
+            
+            // 重新獲取排行榜數據
+            const stats = await getLeaderboardStats();
+            setLeaderboardStats(stats);
+          } catch (error) {
+            console.error('Failed to save leaderboard entry:', error);
+            throw error;
           }
         }
 

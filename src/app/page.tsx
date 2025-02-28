@@ -38,10 +38,16 @@ export default function HomePage() {
   const [hasStudentId, setHasStudentId] = useState(false);
   const [completionTime, setCompletionTime] = useState<string | null>(null);
   const [playerRank, setPlayerRank] = useState<number | null>(null);
-  const [leaderboardStats, setLeaderboardStats] = useState({
+  const [leaderboardStats, setLeaderboardStats] = useState<{
+    total_participants: number;
+    fastest_time: string;
+    average_time: string;
+    rankings: { student_id: string, student_name: string, completion_time_string: string, rank: number }[];
+  }>({
     total_participants: 0,
     fastest_time: '--:--',
-    average_time: '--:--'
+    average_time: '--:--',
+    rankings: []
   });
   const router = useRouter();
 
@@ -370,7 +376,10 @@ export default function HomePage() {
                   </Button>
                 </div>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-[#F5F7FF] rounded-lg">
+                  <div 
+                    className="flex items-center justify-between p-3 bg-[#F5F7FF] rounded-lg cursor-pointer hover:bg-[#EEF1FF] transition-colors"
+                    onClick={() => setShowLeaderboardDialog(true)}
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#2B4EFF] flex items-center justify-center text-white font-bold">
                         {playerRank || '--'}
@@ -494,14 +503,53 @@ export default function HomePage() {
 
             {/* 排行榜列表 */}
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-              <div className="text-center text-gray-500 py-8">
-                目前還沒有完成紀錄
-              </div>
               {leaderboardStats.total_participants === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   目前還沒有完成紀錄
                 </div>
-              ) : null}
+              ) : (
+                <div className="space-y-2">
+                  {/* 表頭 */}
+                  <div className="grid grid-cols-5 gap-4 px-4 py-2 bg-gray-50 rounded-lg text-sm font-medium text-gray-600">
+                    <div>排名</div>
+                    <div>學號</div>
+                    <div>姓名</div>
+                    <div className="col-span-2">完成時間</div>
+                  </div>
+                  {/* 排行榜數據 */}
+                  {leaderboardStats.rankings.map((entry, index) => (
+                    <div 
+                      key={`${entry.student_id}-${index}`}
+                      className={`grid grid-cols-5 gap-4 px-4 py-3 rounded-lg ${
+                        entry.student_id === localStorage.getItem('student_id')
+                          ? 'bg-[#F5F7FF] border border-[#2B4EFF]'
+                          : 'bg-white border border-gray-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={`
+                          w-8 h-8 rounded-full flex items-center justify-center font-bold
+                          ${index === 0 ? 'bg-[#FFD700] text-white' :
+                            index === 1 ? 'bg-[#C0C0C0] text-white' :
+                            index === 2 ? 'bg-[#CD7F32] text-white' :
+                            'bg-gray-100 text-gray-600'}
+                        `}>
+                          {entry.rank}
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-medium">{entry.student_id}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-medium">{entry.student_name}</span>
+                      </div>
+                      <div className="col-span-2 flex items-center text-gray-600">
+                        {entry.completion_time_string}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
