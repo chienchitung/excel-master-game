@@ -51,6 +51,15 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     const isLessonCompleted = progress.completedLessons.includes(currentLessonId);
     const currentQuestion = lessons.find(lesson => lesson.id === currentLessonId)?.questions?.[0];
     
+    // 記錄關卡開始時間
+    if (!isLessonCompleted) {
+      const now = new Date();
+      const startTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
+        .toISOString()
+        .replace('Z', '+08:00');
+      localStorage.setItem(`lesson_${currentLessonId}_start_time`, startTime);
+    }
+    
     setLessonState(prev => ({
       ...prev,
       stars: progress.stars,
@@ -165,11 +174,25 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           throw new Error('Missing student information');
         }
 
+        // 獲取關卡開始時間
+        const startTime = localStorage.getItem(`lesson_${lessonState.currentLesson}_start_time`);
+        if (!startTime) {
+          console.error('Missing lesson start time');
+          throw new Error('Missing lesson start time');
+        }
+
+        // 計算花費時間（秒）
+        const startDate = new Date(startTime);
+        const endDate = new Date(currentTime);
+        const timeSpentSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
+
         console.log('Saving learning record:', {
           student_id: studentId,
           student_name: studentName,
           lesson_id: lessonState.currentLesson,
-          completed_at: currentTime
+          started_at: startTime,
+          completed_at: currentTime,
+          time_spent_seconds: timeSpentSeconds
         });
 
         // 儲存學習記錄到 Supabase
@@ -177,7 +200,9 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           student_id: studentId,
           student_name: studentName,
           lesson_id: lessonState.currentLesson,
-          completed_at: currentTime
+          started_at: startTime,
+          completed_at: currentTime,
+          time_spent_seconds: timeSpentSeconds
         });
 
         // 如果是第五關且答案正確，計算完成時間並記錄到排行榜
@@ -188,8 +213,9 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             throw new Error('Missing start time');
           }
 
-          const endTime = Date.now();
-          const totalTimeInSeconds = Math.floor((endTime - parseInt(startTime)) / 1000);
+          const startDate = new Date(startTime);
+          const endDate = new Date(currentTime);
+          const totalTimeInSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
           const minutes = Math.floor(totalTimeInSeconds / 60);
           const seconds = totalTimeInSeconds % 60;
           const timeString = `${minutes}分${seconds}秒`;

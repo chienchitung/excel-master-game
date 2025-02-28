@@ -10,8 +10,9 @@ export interface LearningRecord {
   student_id: string
   student_name: string
   lesson_id: number
+  started_at: string
   completed_at: string
-  created_at?: string
+  time_spent_seconds: number
 }
 
 export interface LeaderboardEntry {
@@ -20,7 +21,8 @@ export interface LeaderboardEntry {
   student_name: string
   completion_time_seconds: number
   completion_time_string: string
-  completed_at?: string
+  completed_at: string
+  created_at: string
   stars_earned: number
   rank?: number
 }
@@ -32,7 +34,7 @@ export interface LeaderboardStats {
   rankings: { student_id: string, student_name: string, completion_time_string: string, rank: number }[];
 }
 
-export async function saveLearningRecord(record: Omit<LearningRecord, 'id' | 'created_at'>) {
+export async function saveLearningRecord(record: Omit<LearningRecord, 'id'>) {
   const { data, error } = await supabase
     .from('learning_records')
     .insert([record])
@@ -46,7 +48,7 @@ export async function saveLearningRecord(record: Omit<LearningRecord, 'id' | 'cr
   return data
 }
 
-export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 'rank'>) {
+export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 'rank' | 'created_at'>) {
   try {
     // 檢查用戶是否已經有記錄
     const { data: existingData, error: existingError } = await supabase
@@ -64,7 +66,10 @@ export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 
       // 新用戶：直接插入記錄
       const { data, error } = await supabase
         .from('leaderboard')
-        .insert([entry])
+        .insert([{
+          ...entry,
+          created_at: entry.completed_at // 使用 completed_at 作為 created_at
+        }])
         .select();
 
       if (error) {
@@ -81,7 +86,10 @@ export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 
         // 有更好的成績：插入新記錄
         const { data, error } = await supabase
           .from('leaderboard')
-          .insert([entry])
+          .insert([{
+            ...entry,
+            created_at: entry.completed_at // 使用 completed_at 作為 created_at
+          }])
           .select();
 
         if (error) {

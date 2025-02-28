@@ -123,9 +123,15 @@ export default function HomePage() {
 
   const handleStudentIdSubmit = () => {
     if (studentId.trim() && studentName.trim()) {
+      // 正確處理 UTC+8 時間
+      const now = new Date();
+      const startTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
+        .toISOString()
+        .replace('Z', '+08:00');
+
       localStorage.setItem('student_id', studentId.trim());
       localStorage.setItem('student_name', studentName.trim());
-      localStorage.setItem('start_time', Date.now().toString());
+      localStorage.setItem('start_time', startTime);
       setHasStudentId(true);
       router.push('/lessons/1');
     }
