@@ -130,7 +130,7 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
   );
 };
 
-const getInitialMessage = (lessonId: number) => {
+const getInitialMessage = () => {
   return `您好，我是 Owlingo，一位友善的 AI 助教，可以協助您學習 Excel！請問今天有什麼需要幫忙的呢？
 
 為了更好地協助您，建議您可以：
@@ -239,7 +239,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      content: getInitialMessage(parseInt(resolvedParams.id)),
+      content: getInitialMessage(),
       isUser: false,
       timestamp: new Date()
     }
