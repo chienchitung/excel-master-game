@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, GraduationCap, Trophy, Flame, X, Gift } from 'lucide-react'
+import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift } from 'lucide-react'
 import { lessons } from '@/data/lessons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -17,6 +17,7 @@ import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboard
 import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
+import Image from 'next/image'
 
 const formatDataContent = (content: string) => {
   // 檢查是否包含表格式數據
@@ -93,10 +94,12 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
           <div className="flex w-full gap-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                <img 
+                <Image 
                   src="/images/owl-teacher.png" 
                   alt="Owlingo" 
                   className="w-[85%] h-[85%] object-contain"
+                  width={34}
+                  height={34}
                 />
               </div>
             </div>
@@ -261,8 +264,6 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       }
     }
   }, [lessonState.currentLesson]);
-
-  const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
 
   useEffect(() => {
     // Initialize Gemini API with your API key
@@ -699,17 +700,19 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     <h3 className="text-xl font-semibold mb-4">互動教學</h3>
                       <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
                         <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
-                          <iframe 
-                            title="Impostor Escape"
-                        style={{
-                          position: 'absolute',
+                          <Image 
+                            src="https://view.genially.com/67629b8b6b4f9b116946050d"
+                            alt="Impostor Escape"
+                            style={{
+                              position: 'absolute',
                               top: 0,
                               left: 0,
                               width: '100%',
                               height: '100%',
                               border: 'none'
                             }}
-                            src="https://view.genially.com/67629b8b6b4f9b116946050d"
+                            width={1200}
+                            height={675}
                             allowFullScreen={true}
                           />
                         </div>
@@ -890,10 +893,11 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     <div className="bg-gray-50 rounded-xl p-6">
                       <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
                         <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
-                          <iframe 
-                            title="Impostor Escape"
-                      style={{
-                        position: 'absolute',
+                          <Image 
+                            src="https://view.genially.com/67629b8b6b4f9b116946050d"
+                            alt="Impostor Escape"
+                            style={{
+                              position: 'absolute',
                               top: 0,
                               left: 0,
                               width: '100%',
@@ -901,10 +905,11 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                               border: 'none',
                               borderRadius: '0.75rem'
                             }}
-                            src="https://view.genially.com/67629b8b6b4f9b116946050d"
+                            width={1200}
+                            height={675}
                             allowFullScreen={true}
-                    />
-                  </div>
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -1017,10 +1022,12 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             <div className="p-4 border-b bg-[#F8F9FB] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                  <img 
+                  <Image 
                     src="/images/owl-teacher.png" 
                     alt="Owlingo" 
                     className="w-[85%] h-[85%] object-contain"
+                    width={48}
+                    height={48}
                   />
                 </div>
                 <div>
