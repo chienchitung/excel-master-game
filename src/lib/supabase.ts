@@ -93,34 +93,37 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
 }
 
 export async function getPlayerRank(student_id: string): Promise<number> {
-  // 獲取指定用戶的最佳成績
-  const { data: userBestScore, error: userError } = await supabase
+  // 獲取所有用戶的最佳成績
+  const { data: allScores, error: scoresError } = await supabase
     .from('leaderboard')
-    .select('completion_time_seconds')
-    .eq('student_id', student_id)
-    .order('completion_time_seconds', { ascending: true })
-    .limit(1);
+    .select('student_id, completion_time_seconds')
+    .order('completion_time_seconds', { ascending: true });
 
-  if (userError) {
-    console.error('Error getting user best score:', userError);
-    throw userError;
+  if (scoresError) {
+    console.error('Error getting scores:', scoresError);
+    throw scoresError;
   }
 
-  if (!userBestScore || userBestScore.length === 0) return 0;
+  if (!allScores || allScores.length === 0) return 0;
 
-  // 計算有多少用戶的最佳成績比這個用戶好
-  const { count, error: rankError } = await supabase
-    .from('leaderboard')
-    .select('student_id', { count: 'exact', head: true })
-    .lt('completion_time_seconds', userBestScore[0].completion_time_seconds)
-    .not('student_id', 'eq', student_id);
+  // 獲取每個用戶的最佳成績
+  const bestScores = Array.from(
+    allScores.reduce((map, score) => {
+      if (!map.has(score.student_id) || 
+          map.get(score.student_id)!.completion_time_seconds > score.completion_time_seconds) {
+        map.set(score.student_id, score);
+      }
+      return map;
+    }, new Map())
+  ).map(([_, score]) => score);
 
-  if (rankError) {
-    console.error('Error calculating rank:', rankError);
-    throw rankError;
-  }
+  // 按完成時間排序
+  bestScores.sort((a, b) => a.completion_time_seconds - b.completion_time_seconds);
 
-  return (count || 0) + 1;
+  // 找到當前用戶的排名
+  const rank = bestScores.findIndex(score => score.student_id === student_id) + 1;
+  
+  return rank || bestScores.length + 1; // 如果沒有找到，返回最後一名
 }
 
 export async function getLeaderboardStats(): Promise<LeaderboardStats> {
