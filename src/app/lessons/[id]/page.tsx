@@ -17,7 +17,6 @@ import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboard
 import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
-import Image from 'next/image'
 import { ExcelMascot } from '@/components/ExcelMascot'
 
 const formatDataContent = (content: string) => {
