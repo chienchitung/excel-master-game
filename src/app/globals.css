@@ -16,21 +16,23 @@ body {
 
 /* 打字動畫樣式 */
 .typing-indicator {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 12px 16px;
   background-color: #f5f5f5;
   border-radius: 0 16px 16px 16px;
-  width: fit-content;
+  margin: 4px 0;
+  min-width: 60px;
+  animation: fadeIn 0.3s ease forwards;
 }
 
 .typing-dot {
-  width: 6px;
-  height: 6px;
-  background-color: #666;
+  width: 8px;
+  height: 8px;
+  background-color: #2B4EFF;
   border-radius: 50%;
-  animation: typingAnimation 1.4s infinite;
+  animation: typingAnimation 1.4s infinite ease-in-out;
   opacity: 0.3;
 }
 
@@ -39,19 +41,30 @@ body {
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typingAnimation {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.2); }
+  0%, 100% { 
+    opacity: 0.3; 
+    transform: scale(0.8); 
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.2); 
+  }
 }
 
 /* 聊天氣泡樣式 */
 .chat-bubble {
   position: relative;
   padding: 12px 16px;
-  margin-bottom: 8px;
-  max-width: 85%;
+  margin: 4px 0;
+  max-width: 80%;
   opacity: 0;
   transform: translateY(10px);
   animation: fadeIn 0.3s ease forwards;
+  line-height: 1.4;
+  font-size: 15px;
+  display: inline-block;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 .chat-bubble.bot {
@@ -59,16 +72,41 @@ body {
   border-radius: 0 16px 16px 16px;
   color: #000;
   align-self: flex-start;
-  width: auto;
-  height: auto;
+  width: fit-content;
 }
 
 .chat-bubble.user {
   background-color: #2563eb;
+  border-radius: 16px 0 16px 16px;
   color: white;
   align-self: flex-end;
-  border-radius: 16px 0 16px 16px;
-  margin-left: auto;
+  text-align: left;
+  width: auto;
+  min-width: min-content;
+  white-space: pre-wrap;
+}
+
+/* 聊天內容容器 */
+.chat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 訊息容器 */
+.message-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.message-container.user {
+  align-items: flex-end;
+}
+
+.message-container.bot {
+  align-items: flex-start;
 }
 
 @keyframes fadeIn {
@@ -82,6 +120,7 @@ body {
 .markdown-content {
   color: #374151;
   line-height: 1.6;
+  font-size: inherit;
 }
 
 .markdown-content h1 {
@@ -106,14 +145,18 @@ body {
 }
 
 .markdown-content p {
-  margin: 0.75rem 0;
+  margin: 0;
   line-height: 1.6;
+}
+
+.markdown-content p + p {
+  margin-top: 8px;
 }
 
 .markdown-content ul,
 .markdown-content ol {
-  margin: 0.75rem 0;
-  padding-left: 1.5rem;
+  margin: 8px 0;
+  padding-left: 20px;
 }
 
 .markdown-content ul {
@@ -125,8 +168,7 @@ body {
 }
 
 .markdown-content li {
-  margin: 0.375rem 0;
-  padding-left: 0.25rem;
+  margin: 4px 0;
 }
 
 .markdown-content code {
@@ -178,42 +220,131 @@ body {
 }
 
 .markdown-content table {
-  width: 100%;
+  width: auto;
   border-collapse: collapse;
   margin: 1rem 0;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .markdown-content th,
 .markdown-content td {
-  padding: 0.5rem;
-  border: 1px solid #E5E7EB;
+  padding: 8px 16px;
   text-align: left;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  white-space: nowrap;
 }
 
 .markdown-content th {
-  background-color: #F9FAFB;
+  background-color: #f9fafb;
   font-weight: 600;
+  color: #374151;
+}
+
+.markdown-content td {
+  color: #1f2937;
 }
 
 /* 在聊天氣泡中的特殊調整 */
 .chat-bubble .markdown-content {
   color: inherit;
+  white-space: normal;
+  font-size: inherit !important;
 }
 
-.chat-bubble .markdown-content p:first-child {
-  margin-top: 0;
+.chat-bubble .markdown-content * {
+  font-size: inherit !important;
 }
 
-.chat-bubble .markdown-content p:last-child {
-  margin-bottom: 0;
+/* 機器人訊息中的標題大小 */
+.chat-bubble.bot .markdown-content h1 {
+  font-size: 1.25em !important;
+  font-weight: 600;
+  margin: 1em 0 0.5em;
+  color: #111827;
 }
 
-.chat-bubble .markdown-content ul,
-.chat-bubble .markdown-content ol {
-  margin: 0.5rem 0;
+.chat-bubble.bot .markdown-content h2 {
+  font-size: 1.15em !important;
+  font-weight: 600;
+  margin: 0.75em 0 0.5em;
+  color: #111827;
 }
 
-.chat-bubble .markdown-content pre {
-  margin: 0.5rem 0;
+.chat-bubble.bot .markdown-content h3 {
+  font-size: 1.1em !important;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+  color: #111827;
+}
+
+/* 其他內容保持一致大小 */
+.chat-bubble.bot .markdown-content p,
+.chat-bubble.bot .markdown-content li,
+.chat-bubble.bot .markdown-content td,
+.chat-bubble.bot .markdown-content th {
+  font-size: inherit !important;
+}
+
+.chat-bubble.bot .markdown-content code {
   background-color: rgba(0, 0, 0, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  color: #374151;
+}
+
+/* 數據列表格式 */
+.chat-bubble.bot .markdown-content .data-list {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 0;
+  margin: 8px 0;
+}
+
+.chat-bubble.bot .markdown-content .data-list li {
+  padding: 4px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.chat-bubble.bot .markdown-content .data-list li:last-child {
+  border-bottom: none;
+}
+
+/* 格式化的數據區塊 */
+.chat-bubble.bot .markdown-content blockquote {
+  background-color: white;
+  border-left: 4px solid #2563eb;
+  padding: 12px 16px;
+  margin: 8px 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.chat-bubble.bot .markdown-content blockquote p {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #374151;
+  font-style: normal;
+}
+
+/* 表格容器的水平滾動 */
+.chat-bubble.bot .markdown-content .table-container,
+.markdown-content .table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+/* 確保表格在容器中正確顯示 */
+.chat-bubble.bot .markdown-content table,
+.markdown-content table {
+  margin: 0;
+  min-width: 100%;
 }

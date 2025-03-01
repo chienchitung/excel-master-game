@@ -17,7 +17,7 @@ const SYSTEM_PROMPT = `
 - 適當使用表格來組織資訊
 
 #教學策略：
-1. 理解學生的問題：務必確認理解學生的需求，必要時提出 clarifying questions。
+1. 理解學生的問題：務必確認理解學生的需求，必要時提出問題，使用問題來引導學生思考。
 2. 分步指導：不要直接提供答案，而是引導學生找到解決方案。
     * 提供提示和線索：引導學生思考相關的 Excel 功能和概念。
     * 使用示例和演示：用簡單的例子說明如何應用特定功能。
@@ -70,7 +70,15 @@ export async function initializeGemini(apiKey: string): Promise<void> {
   }
 }
 
-export async function getChatResponse(message: string): Promise<string> {
+interface ChatContext {
+  context: Array<{
+    content: string;
+    isUser: boolean;
+  }>;
+  lessonInfo: string;
+}
+
+export async function getChatResponse(message: string, context?: ChatContext): Promise<string> {
   if (!genAI || !model) {
     console.error('Gemini API not initialized');
     return '# 系統錯誤\n\n> 抱歉，AI 助教目前無法使用。請確認系統設定是否正確。';
@@ -79,17 +87,36 @@ export async function getChatResponse(message: string): Promise<string> {
   try {
     console.log('Creating chat with message:', message);
     
+    const history = [
+      {
+        role: "user",
+        parts: [{ text: SYSTEM_PROMPT }],
+      },
+      {
+        role: "model",
+        parts: [{ text: "我明白了，我會按照這些指導原則來扮演Excel教師，幫助學生學習。我會使用 Markdown 格式來組織我的回覆，確保內容清晰易讀。" }],
+      },
+    ];
+
+    // 如果有上下文，添加到歷史記錄中
+    if (context) {
+      // 添加課程資訊
+      history.push({
+        role: "user",
+        parts: [{ text: `當前課程資訊：\n${context.lessonInfo}` }],
+      });
+      
+      // 添加最近的對話記錄
+      context.context.forEach(msg => {
+        history.push({
+          role: msg.isUser ? "user" : "model",
+          parts: [{ text: msg.content }],
+        });
+      });
+    }
+
     const chat = model.startChat({
-      history: [
-        {
-          role: "user",
-          parts: [{ text: SYSTEM_PROMPT }],
-        },
-        {
-          role: "model",
-          parts: [{ text: "我明白了，我會按照這些指導原則來扮演Excel教師，幫助學生學習。我會使用 Markdown 格式來組織我的回覆，確保內容清晰易讀。" }],
-        },
-      ],
+      history,
       generationConfig: {
         temperature: 0.7,
         topK: 40,

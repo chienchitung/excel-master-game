@@ -17,6 +17,49 @@ import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboard
 import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import { TypeAnimation } from 'react-type-animation';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm'
+
+const formatDataContent = (content: string) => {
+  // 檢查是否包含表格式數據
+  if (content.includes('|')) {
+    // 將內容分行處理
+    const lines = content.split('\n');
+    const formattedLines = [];
+    let isInTable = false;
+    
+    for (let line of lines) {
+      // 清理行內容
+      line = line.trim();
+      
+      // 跳過空行
+      if (!line) continue;
+      
+      // 檢查是否為表格行
+      if (line.includes('|')) {
+        // 清理表格行
+        line = line
+          .replace(/^\||\|$/g, '') // 移除開頭和結尾的 |
+          .split('|')
+          .map(cell => cell.trim()) // 清理每個單元格
+          .join(' | ');
+        
+        if (line) {
+          formattedLines.push('| ' + line + ' |');
+          isInTable = true;
+        }
+      } else {
+        if (isInTable) {
+          formattedLines.push(''); // 表格結束後加入空行
+          isInTable = false;
+        }
+        formattedLines.push(line);
+      }
+    }
+    
+    return formattedLines.join('\n');
+  }
+  return content;
+};
 
 const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) => {
   const [isTyping, setIsTyping] = useState(!isUser);
@@ -24,13 +67,20 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
 
   useEffect(() => {
     if (!isUser) {
-      setIsTyping(true);
+      // 重置顯示狀態
       setDisplayedMessage('');
-      const timer = setTimeout(() => {
-        setIsTyping(false);
-        setDisplayedMessage(message);
-      }, 1500);
-      return () => clearTimeout(timer);
+      setIsTyping(true);
+      
+      // 如果有實際訊息內容，則開始計時顯示
+      if (message) {
+        const timer = setTimeout(() => {
+          setIsTyping(false);
+          setDisplayedMessage(message);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+      // 如果沒有訊息內容，保持打字動畫
+      return () => {};
     } else {
       setIsTyping(false);
       setDisplayedMessage(message);
@@ -38,27 +88,63 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
   }, [message, isUser]);
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      {!isUser && isTyping ? (
-        <div className="typing-indicator">
-          <div className="typing-dot"></div>
-          <div className="typing-dot"></div>
-          <div className="typing-dot"></div>
-        </div>
-      ) : (
-        <div className={`chat-bubble ${isUser ? 'user' : 'bot'}`}>
-          {isUser ? (
-            <div className="text-sm md:text-base">{displayedMessage}</div>
-          ) : (
-            <div className="prose prose-sm max-w-none dark:prose-invert markdown-content">
-              <ReactMarkdown>{displayedMessage}</ReactMarkdown>
+    <div className={`message-container ${isUser ? 'user' : 'bot'}`}>
+      <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} w-full`}>
+        {!isUser && (
+          <div className="flex w-full gap-3">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#2B4EFF] flex items-center justify-center">
+                <GraduationCap className="h-5 w-5 text-white" />
+              </div>
             </div>
-          )}
-        </div>
-      )}
+            <div className="flex-grow">
+              {isTyping ? (
+                <div className="typing-indicator">
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                </div>
+              ) : (
+                <div className="chat-bubble bot">
+                  <div className="prose prose-base max-w-none dark:prose-invert markdown-content text-sm md:text-base">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{formatDataContent(displayedMessage)}</ReactMarkdown>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {isUser && (
+          <div className="chat-bubble user">
+            <span className="text-sm md:text-base">{displayedMessage}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
+
+const getInitialMessage = (lessonId: number) => {
+  const currentLesson = lessons.find(lesson => lesson.id === lessonId);
+  return `歡迎來到第 ${lessonId} 關！我是你的 AI 助教，這一關我們會學習${currentLesson?.title || ''}。
+有任何關於 Excel 的問題都可以問我！
+
+為了更好地協助您，建議您可以：
+1. 說明您想完成的任務
+2. 描述您目前使用的方法
+3. 提供遇到的具體問題
+
+讓我們開始學習吧！`;
+};
+
+// 定義聊天上下文介面
+interface ChatContext {
+  context: Array<{
+    content: string;
+    isUser: boolean;
+  }>;
+  lessonInfo: string;
+}
 
 export default function ExcelLearningPlatform({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -149,7 +235,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: '1',
-      content: '歡迎來到第 ' + resolvedParams.id + ' 關！我是你的 AI 助教，有任何問題都可以問我！',
+      content: getInitialMessage(parseInt(resolvedParams.id)),
       isUser: false,
       timestamp: new Date()
     }
@@ -414,12 +500,28 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     setChatInput('');
 
     try {
-      // Get response from Gemini API
-      const aiResponse = await getChatResponse(chatInput);
+      // 構建上下文訊息
+      const contextMessages = chatMessages.slice(-4).map(msg => ({
+        content: msg.content,
+        isUser: msg.isUser
+      }));
+      
+      // 添加當前課程資訊到上下文
+      const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
+      const lessonContext = `當前課程：第 ${lessonState.currentLesson} 關 - ${currentLesson?.title}
+課程內容：${currentLesson?.description}`;
+
+      // 獲得 AI 回應
+      const chatContext: ChatContext = {
+        context: contextMessages,
+        lessonInfo: lessonContext
+      };
+      
+      const aiResponse = await getChatResponse(chatInput, chatContext);
       
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: aiResponse,
+        content: aiResponse, // 移除 convertToTraditional，因為已經在 formatDataContent 中處理
         isUser: false,
         timestamp: new Date()
       };
@@ -428,7 +530,6 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     } catch (error) {
       console.error('Error getting AI response:', error);
       
-      // Add error message to chat
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         content: '抱歉，我現在無法回應。請稍後再試。',
@@ -891,19 +992,19 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             fixed inset-0 md:inset-auto md:top-[4rem] md:right-0 md:h-[calc(100vh-4rem)] 
             bg-white border-l z-50 transition-all duration-300
             ${lessonState.showChat 
-              ? 'translate-x-0 w-full md:w-96' 
+              ? 'translate-x-0 w-full md:w-[480px]' 
               : 'translate-x-full w-full md:w-0'
             }
           `}
         >
           <div className="h-full flex flex-col">
             <div className="p-4 border-b bg-[#F5F7FF] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-[#2B4EFF] flex items-center justify-center">
-                  <GraduationCap className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-[#2B4EFF] flex items-center justify-center">
+                  <GraduationCap className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="font-semibold text-gray-900">AI 助教</h2>
+                  <h2 className="font-semibold text-gray-900 text-lg">AI 助教</h2>
                   <p className="text-sm text-gray-500">隨時為您解答問題</p>
                 </div>
               </div>
@@ -917,8 +1018,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               </Button>
             </div>
 
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 px-6 py-4">
+              <div className="space-y-6">
                 {chatMessages.map((message) => (
                   <ChatMessage
                     key={message.id}
@@ -929,19 +1030,19 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               </div>
             </ScrollArea>
 
-            <div className="p-4 border-t bg-white">
-              <div className="flex gap-2">
+            <div className="p-6 border-t bg-white">
+              <div className="flex gap-3">
                 <input
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="輸入您的問題..."
-                  className="flex-1 px-4 py-2 border rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent"
+                  className="flex-1 px-4 py-3 border rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent"
                 />
                 <Button 
                   onClick={handleSendMessage}
-                  className="bg-[#2B4EFF] hover:bg-blue-700 text-white rounded-xl px-4 md:px-6 text-sm md:text-base"
+                  className="bg-[#2B4EFF] hover:bg-blue-700 text-white rounded-xl px-6 text-sm md:text-base"
                 >
                   發送
                 </Button>
