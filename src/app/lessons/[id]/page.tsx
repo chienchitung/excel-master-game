@@ -15,7 +15,6 @@ import { getProgress, updateLessonProgress } from '@/lib/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats } from '@/lib/supabase'
 import { initializeGemini, getChatResponse } from '@/lib/gemini'
-import { TypeAnimation } from 'react-type-animation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
 
