@@ -10,10 +10,55 @@ import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Gradua
 import { lessons } from '@/data/lessons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { State, ChatMessage } from '@/types/lesson'
+import { State, type ChatMessage } from '@/types/lesson'
 import { getProgress, updateLessonProgress } from '@/lib/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats } from '@/lib/supabase'
+import { initializeGemini, getChatResponse } from '@/lib/gemini'
+import { TypeAnimation } from 'react-type-animation';
+import ReactMarkdown from 'react-markdown';
+
+const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) => {
+  const [isTyping, setIsTyping] = useState(!isUser);
+  const [displayedMessage, setDisplayedMessage] = useState('');
+
+  useEffect(() => {
+    if (!isUser) {
+      setIsTyping(true);
+      setDisplayedMessage('');
+      const timer = setTimeout(() => {
+        setIsTyping(false);
+        setDisplayedMessage(message);
+      }, 1500);
+      return () => clearTimeout(timer);
+    } else {
+      setIsTyping(false);
+      setDisplayedMessage(message);
+    }
+  }, [message, isUser]);
+
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
+      {!isUser && isTyping ? (
+        <div className="typing-indicator">
+          <div className="typing-dot"></div>
+          <div className="typing-dot"></div>
+          <div className="typing-dot"></div>
+        </div>
+      ) : (
+        <div className={`chat-bubble ${isUser ? 'user' : 'bot'}`}>
+          {isUser ? (
+            <div className="text-sm md:text-base">{displayedMessage}</div>
+          ) : (
+            <div className="prose prose-sm max-w-none dark:prose-invert markdown-content">
+              <ReactMarkdown>{displayedMessage}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function ExcelLearningPlatform({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -130,6 +175,26 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   }, [lessonState.currentLesson]);
 
   const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
+
+  useEffect(() => {
+    // Initialize Gemini API with your API key
+    const initializeAI = async () => {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      if (!apiKey) {
+        console.error('Gemini API key is not set in environment variables');
+        return;
+      }
+
+      try {
+        await initializeGemini(apiKey);
+      } catch (error) {
+        console.error('Failed to initialize Gemini API:', error);
+        // 可以在這裡添加錯誤提示 UI
+      }
+    };
+
+    initializeAI();
+  }, []);
 
   const handleAnswerSubmit = async () => {
     try {
@@ -335,7 +400,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
   const showTabs = lessonState.currentLesson === 5 ? ['game'] : ['practice', 'content']
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
 
     const newMessage: ChatMessage = {
@@ -348,16 +413,31 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     setChatMessages(prev => [...prev, newMessage]);
     setChatInput('');
 
-    // 模擬 AI 回覆
-    setTimeout(() => {
-      const aiResponse: ChatMessage = {
+    try {
+      // Get response from Gemini API
+      const aiResponse = await getChatResponse(chatInput);
+      
+      const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: `讓我來幫你解答關於${currentLesson?.title}的問題。${currentLesson?.description}`,
+        content: aiResponse,
         isUser: false,
         timestamp: new Date()
       };
-      setChatMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+      
+      setChatMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      
+      // Add error message to chat
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: '抱歉，我現在無法回應。請稍後再試。',
+        isUser: false,
+        timestamp: new Date()
+      };
+      
+      setChatMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const handleContinue = () => {
@@ -840,21 +920,11 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {chatMessages.map((message) => (
-                  <div 
+                  <ChatMessage
                     key={message.id}
-                    className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`
-                      rounded-2xl p-3 max-w-[80%]
-                      ${message.isUser 
-                        ? 'bg-[#2B4EFF] text-white' 
-                        : 'bg-gray-100 text-gray-900'
-                      }
-                      text-sm md:text-base
-                    `}>
-                    {message.content}
-                    </div>
-                  </div>
+                    message={message.content}
+                    isUser={message.isUser}
+                  />
                 ))}
               </div>
             </ScrollArea>
