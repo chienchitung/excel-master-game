@@ -18,6 +18,7 @@ import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
 import Image from 'next/image'
+import { ExcelMascot } from '@/components/ExcelMascot'
 
 const formatDataContent = (content: string) => {
   // 檢查是否包含表格式數據
@@ -64,56 +65,89 @@ const formatDataContent = (content: string) => {
 const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) => {
   const [isTyping, setIsTyping] = useState(!isUser);
   const [displayedMessage, setDisplayedMessage] = useState('');
+  const [isVisible, setIsVisible] = useState(false);
+  const messageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setIsVisible(true);
     if (!isUser) {
-      // 重置顯示狀態
       setDisplayedMessage('');
       setIsTyping(true);
       
-      // 如果有實際訊息內容，則開始計時顯示
       if (message) {
         const timer = setTimeout(() => {
           setIsTyping(false);
           setDisplayedMessage(message);
-        }, 1500);
+          // 當消息內容更新時滾動到底部
+          messageRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 800);
         return () => clearTimeout(timer);
       }
-      // 如果沒有訊息內容，保持打字動畫
       return () => {};
     } else {
       setIsTyping(false);
       setDisplayedMessage(message);
+      // 用戶消息立即滾動到底部
+      messageRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [message, isUser]);
 
   return (
-    <div className={`message-container ${isUser ? 'user' : 'bot'}`}>
+    <div 
+      ref={messageRef}
+      className={`message-container ${isUser ? 'user' : 'bot'} transition-all duration-300 ease-out ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+      }`}
+    >
       <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} w-full`}>
         {!isUser && (
           <div className="flex w-full gap-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                <Image 
-                  src="/images/owl-teacher.png" 
-                  alt="Owlingo" 
-                  width={28}
-                  height={28}
-                  className="w-[85%] h-[85%] object-contain"
-                />
+                <ExcelMascot className="w-full h-full p-1" />
               </div>
             </div>
             <div className="flex-grow">
               {isTyping ? (
-                <div className="typing-indicator">
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
-                  <div className="typing-dot"></div>
+                <div className="typing-indicator p-4 bg-gray-50 rounded-2xl">
+                  <div className="flex gap-1">
+                    <div className="typing-dot animate-bounce delay-0"></div>
+                    <div className="typing-dot animate-bounce delay-150"></div>
+                    <div className="typing-dot animate-bounce delay-300"></div>
+                  </div>
                 </div>
               ) : (
-                <div className="chat-bubble bot">
-                  <div className="prose prose-base max-w-none dark:prose-invert markdown-content text-sm md:text-base">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{formatDataContent(displayedMessage)}</ReactMarkdown>
+                <div className="chat-bubble bot transition-all duration-300 ease-out">
+                  <div className="prose prose-base max-w-none dark:prose-invert markdown-content text-sm md:text-base [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        table: ({ children }) => (
+                          <div className="overflow-x-auto my-4">
+                            <table className="min-w-full border-collapse border border-gray-300">
+                              {children}
+                            </table>
+                          </div>
+                        ),
+                        th: ({ children }) => (
+                          <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left">
+                            {children}
+                          </th>
+                        ),
+                        td: ({ children }) => (
+                          <td className="border border-gray-300 px-4 py-2">
+                            {children}
+                          </td>
+                        ),
+                        p: ({ children }) => (
+                          <p className="mb-4 last:mb-0 whitespace-pre-wrap">
+                            {children}
+                          </p>
+                        )
+                      }}
+                    >
+                      {formatDataContent(displayedMessage)}
+                    </ReactMarkdown>
                   </div>
                 </div>
               )}
@@ -122,7 +156,7 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
         )}
         {isUser && (
           <div className="chat-bubble user">
-            <span className="text-sm md:text-base">{displayedMessage}</span>
+            <span className="text-sm md:text-base whitespace-pre-wrap">{displayedMessage}</span>
           </div>
         )}
       </div>
@@ -179,6 +213,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     dailyGoal: 50,
     streak: 1
   });
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     const progress = getProgress();
@@ -488,6 +523,10 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     }));
   };
 
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
   const showTabs = lessonState.currentLesson === 5 ? ['game'] : ['practice', 'content']
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -505,19 +544,37 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     setChatMessages(prev => [...prev, newMessage]);
     setChatInput('');
 
+    // 重置輸入框高度為固定值
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+      textarea.style.height = '4rem';
+    }
+
     try {
+      // 立即添加一個空的機器人消息來顯示打字動畫
+      const tempBotMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        content: '',
+        isUser: false,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, tempBotMessage]);
+
+      // 確保滾動到底部
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+
       // 構建上下文訊息
       const contextMessages = chatMessages.slice(-4).map(msg => ({
         content: msg.content,
         isUser: msg.isUser
       }));
       
-      // 添加當前課程資訊到上下文
       const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
       const lessonContext = `當前課程：第 ${lessonState.currentLesson} 關 - ${currentLesson?.title}
 課程內容：${currentLesson?.description}`;
 
-      // 獲得 AI 回應
       const chatContext: ChatContext = {
         context: contextMessages,
         lessonInfo: lessonContext
@@ -525,37 +582,39 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       
       const aiResponse = await getChatResponse(chatInput, chatContext);
       
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        content: aiResponse, // 移除 convertToTraditional，因為已經在 formatDataContent 中處理
-        isUser: false,
-        timestamp: new Date()
-      };
-      
-      setChatMessages(prev => [...prev, aiMessage]);
+      // 更新機器人的實際回應
+      setChatMessages(prev => [
+        ...prev.slice(0, -1),
+        {
+          id: (Date.now() + 1).toString(),
+          content: aiResponse,
+          isUser: false,
+          timestamp: new Date()
+        }
+      ]);
+
+      // 確保在回應後再次滾動到底部
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+
     } catch (error) {
       console.error('Error getting AI response:', error);
       
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        content: '抱歉，我現在無法回應。請稍後再試。',
-        isUser: false,
-        timestamp: new Date()
-      };
-      
-      setChatMessages(prev => [...prev, errorMessage]);
-    }
+      setChatMessages(prev => [
+        ...prev.slice(0, -1),
+        {
+          id: (Date.now() + 1).toString(),
+          content: '抱歉，我現在無法回應。請稍後再試。',
+          isUser: false,
+          timestamp: new Date()
+        }
+      ]);
 
-    // 重置輸入框
-    setChatInput(''); // 清空輸入框
-    const textarea = document.querySelector('textarea'); // 獲取 textarea 元素
-    if (textarea) {
-      textarea.style.height = '4rem'; // 設置為固定高度
-    }
-
-    // 滾動到聊天視窗底部
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      // 錯誤時也要滾動到底部
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     }
   };
 
@@ -654,7 +713,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       </header>
 
       <div className="container mx-auto px-4 py-6 md:py-8 flex flex-col md:flex-row gap-4 md:gap-6">
-        <main className={`transition-all duration-300 ${lessonState.showChat ? 'w-full md:w-[calc(100%-24rem)]' : 'w-full'}`}>
+        <main className={`transition-all duration-300 ${lessonState.showChat ? (isExpanded ? 'w-0 md:w-0' : 'w-full md:w-[calc(100%-24rem)]') : 'w-full'}`}>
           <div className="mb-6 md:mb-8">
             <div className="flex items-center gap-4 mb-4">
               <Link 
@@ -1010,7 +1069,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             fixed inset-0 md:inset-auto md:top-[4rem] md:right-0 md:h-[calc(100vh-4rem)] 
             bg-white border-l z-50 transition-all duration-300
             ${lessonState.showChat 
-              ? 'translate-x-0 w-full md:w-[480px]' 
+              ? 'translate-x-0 ' + (isExpanded ? 'w-full md:w-full' : 'w-full md:w-[480px]')
               : 'translate-x-full w-full md:w-0'
             }
           `}
@@ -1019,31 +1078,43 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             <div className="p-4 border-b bg-[#F8F9FB] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                  <Image 
-                    src="/images/owl-teacher.png" 
-                    alt="Owlingo" 
-                    width={32}
-                    height={32}
-                    className="w-[85%] h-[85%] object-contain"
-                  />
+                  <ExcelMascot className="w-full h-full p-1" />
                 </div>
                 <div>
                   <h2 className="font-semibold text-gray-900 text-lg">Owlingo</h2>
                   <p className="text-sm text-gray-500">隨時為您解答問題</p>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={toggleChat}
-                className="hover:bg-gray-100 rounded-lg"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={toggleExpand}
+                  className="hover:bg-gray-100 rounded-lg"
+                >
+                  {isExpanded ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1"/>
+                    </svg>
+                  )}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={toggleChat}
+                  className="hover:bg-gray-100 rounded-lg"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </Button>
+              </div>
             </div>
 
             <ScrollArea className="flex-1 px-6 py-4">
-              <div className="space-y-6">
+              <div className="space-y-6 max-w-3xl mx-auto">
                 {chatMessages.map((message) => (
                   <ChatMessage
                     key={message.id}
@@ -1056,18 +1127,18 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             </ScrollArea>
 
             <div className="p-6 border-t bg-white">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 max-w-3xl mx-auto">
                 <textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onInput={(e) => {
-                    e.currentTarget.style.height = 'auto'; // 重置高度
-                    e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`; // 設置為內容的高度
+                    e.currentTarget.style.height = '4rem';
+                    e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
                   }}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       handleSendMessage();
-                      e.preventDefault(); // 防止換行
+                      e.preventDefault();
                     }
                   }}
                   placeholder="輸入您的問題..."
