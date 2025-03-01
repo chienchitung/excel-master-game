@@ -30,7 +30,7 @@ body {
 .typing-dot {
   width: 8px;
   height: 8px;
-  background-color: #2B4EFF;
+  background-color: #666;
   border-radius: 50%;
   animation: typingAnimation 1.4s infinite ease-in-out;
   opacity: 0.3;

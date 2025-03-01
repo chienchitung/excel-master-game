@@ -92,8 +92,12 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
         {!isUser && (
           <div className="flex w-full gap-3">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 rounded-full bg-[#2B4EFF] flex items-center justify-center">
-                <GraduationCap className="h-5 w-5 text-white" />
+              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                <img 
+                  src="/images/owl-teacher.png" 
+                  alt="Owlingo" 
+                  className="w-[85%] h-[85%] object-contain"
+                />
               </div>
             </div>
             <div className="flex-grow">
@@ -125,8 +129,7 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
 
 const getInitialMessage = (lessonId: number) => {
   const currentLesson = lessons.find(lesson => lesson.id === lessonId);
-  return `歡迎來到第 ${lessonId} 關！我是你的 AI 助教，這一關我們會學習${currentLesson?.title || ''}。
-有任何關於 Excel 的問題都可以問我！
+  return `您好，我是 Owlingo，一位友善的 AI 助教，可以協助您學習 Excel！請問今天有什麼需要幫忙的呢？
 
 為了更好地協助您，建議您可以：
 1. 說明您想完成的任務
@@ -485,6 +488,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
   const showTabs = lessonState.currentLesson === 5 ? ['game'] : ['practice', 'content']
 
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
 
@@ -537,6 +542,18 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       };
       
       setChatMessages(prev => [...prev, errorMessage]);
+    }
+
+    // 重置輸入框
+    setChatInput(''); // 清空輸入框
+    const textarea = document.querySelector('textarea'); // 獲取 textarea 元素
+    if (textarea) {
+      textarea.style.height = '4rem'; // 設置為固定高度
+    }
+
+    // 滾動到聊天視窗底部
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -997,13 +1014,17 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           `}
         >
           <div className="h-full flex flex-col">
-            <div className="p-4 border-b bg-[#F5F7FF] flex items-center justify-between">
+            <div className="p-4 border-b bg-[#F8F9FB] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-[#2B4EFF] flex items-center justify-center">
-                  <GraduationCap className="h-6 w-6 text-white" />
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                  <img 
+                    src="/images/owl-teacher.png" 
+                    alt="Owlingo" 
+                    className="w-[85%] h-[85%] object-contain"
+                  />
                 </div>
                 <div>
-                  <h2 className="font-semibold text-gray-900 text-lg">AI 助教</h2>
+                  <h2 className="font-semibold text-gray-900 text-lg">Owlingo</h2>
                   <p className="text-sm text-gray-500">隨時為您解答問題</p>
                 </div>
               </div>
@@ -1011,7 +1032,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 variant="ghost" 
                 size="icon"
                 onClick={toggleChat}
-                className="hover:bg-blue-100 rounded-lg"
+                className="hover:bg-gray-100 rounded-lg"
               >
                 <X className="h-5 w-5 text-gray-500" />
               </Button>
@@ -1026,18 +1047,27 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     isUser={message.isUser}
                   />
                 ))}
+                <div ref={chatEndRef} />
               </div>
             </ScrollArea>
 
             <div className="p-6 border-t bg-white">
-              <div className="flex gap-3">
-                <input
-                  type="text"
+              <div className="flex items-center gap-3">
+                <textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onInput={(e) => {
+                    e.currentTarget.style.height = 'auto'; // 重置高度
+                    e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`; // 設置為內容的高度
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      handleSendMessage();
+                      e.preventDefault(); // 防止換行
+                    }
+                  }}
                   placeholder="輸入您的問題..."
-                  className="flex-1 px-4 py-3 border rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent"
+                  className="flex-1 px-4 py-3 border rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent resize-none h-16"
                 />
                 <Button 
                   onClick={handleSendMessage}
