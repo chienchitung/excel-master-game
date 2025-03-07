@@ -479,36 +479,36 @@ export default function HomePage() {
 
       {/* 排行榜對話框 */}
       <Dialog open={showLeaderboardDialog} onOpenChange={setShowLeaderboardDialog}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Trophy className="h-6 w-6 text-[#2B4EFF]" />
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl mb-2">
+              <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-[#2B4EFF]" />
               完成時間排行榜
             </DialogTitle>
-            <DialogDescription className="text-base">
+            <DialogDescription className="text-sm sm:text-base">
               查看所有學習者的完成時間排名
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* 排行榜統計資訊 */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-[#F5F7FF] rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-[#2B4EFF]">{leaderboardStats.total_participants}</div>
-                <div className="text-sm text-gray-500">參與人數</div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+              <div className="bg-[#F5F7FF] rounded-xl p-3 sm:p-4 text-center">
+                <div className="text-xl sm:text-2xl font-bold text-[#2B4EFF]">{leaderboardStats.total_participants}</div>
+                <div className="text-xs sm:text-sm text-gray-500">參與人數</div>
               </div>
-              <div className="bg-[#FFF5E5] rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-[#FF9900]">{leaderboardStats.fastest_time}</div>
-                <div className="text-sm text-gray-500">最快紀錄</div>
+              <div className="bg-[#FFF5E5] rounded-xl p-3 sm:p-4 text-center">
+                <div className="text-xl sm:text-2xl font-bold text-[#FF9900]">{leaderboardStats.fastest_time}</div>
+                <div className="text-xs sm:text-sm text-gray-500">最快紀錄</div>
               </div>
-              <div className="bg-[#E5FFE1] rounded-xl p-4 text-center">
-                <div className="text-2xl font-bold text-[#58CC02]">{leaderboardStats.average_time}</div>
-                <div className="text-sm text-gray-500">平均時間</div>
+              <div className="bg-[#E5FFE1] rounded-xl p-3 sm:p-4 text-center">
+                <div className="text-xl sm:text-2xl font-bold text-[#58CC02]">{leaderboardStats.average_time}</div>
+                <div className="text-xs sm:text-sm text-gray-500">平均時間</div>
               </div>
             </div>
 
             {/* 排行榜列表 */}
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            <div className="space-y-3 max-h-[calc(90vh-280px)] overflow-y-auto pr-2">
               {leaderboardStats.total_participants === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   目前還沒有完成紀錄
@@ -516,25 +516,25 @@ export default function HomePage() {
               ) : (
                 <div className="space-y-2">
                   {/* 表頭 */}
-                  <div className="grid grid-cols-5 gap-4 px-4 py-2 bg-gray-50 rounded-lg text-sm font-medium text-gray-600">
-                    <div>排名</div>
-                    <div>學號</div>
-                    <div>姓名</div>
-                    <div className="col-span-2">最佳完成時間</div>
+                  <div className="grid grid-cols-12 gap-2 sm:gap-4 px-3 sm:px-4 py-2 bg-gray-50 rounded-lg text-xs sm:text-sm font-medium text-gray-600">
+                    <div className="col-span-2">排名</div>
+                    <div className="col-span-3 sm:col-span-4">學號</div>
+                    <div className="col-span-3">姓名</div>
+                    <div className="col-span-4 sm:col-span-3">完成時間</div>
                   </div>
                   {/* 排行榜數據 */}
                   {leaderboardStats.rankings.map((entry, index) => (
                     <div 
                       key={`${entry.student_id}-${index}`}
-                      className={`grid grid-cols-5 gap-4 px-4 py-3 rounded-lg ${
+                      className={`grid grid-cols-12 gap-2 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${
                         entry.student_id === localStorage.getItem('student_id')
                           ? 'bg-[#F5F7FF] border border-[#2B4EFF]'
                           : 'bg-white border border-gray-100'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="col-span-2 flex items-center">
                         <div className={`
-                          w-8 h-8 rounded-full flex items-center justify-center font-bold
+                          w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm
                           ${index === 0 ? 'bg-[#FFD700] text-white' :
                             index === 1 ? 'bg-[#C0C0C0] text-white' :
                             index === 2 ? 'bg-[#CD7F32] text-white' :
@@ -543,14 +543,20 @@ export default function HomePage() {
                           {entry.rank}
                         </div>
                       </div>
-                      <div className="flex items-center">
-                        <span className="font-medium">{entry.student_id}</span>
+                      <div className="col-span-3 sm:col-span-4 flex items-center">
+                        <span className="font-medium text-xs sm:text-sm truncate" title={entry.student_id}>
+                          {entry.student_id}
+                        </span>
                       </div>
-                      <div className="flex items-center">
-                        <span className="font-medium">{entry.student_name}</span>
+                      <div className="col-span-3 flex items-center">
+                        <span className="font-medium text-xs sm:text-sm truncate" title={entry.student_name}>
+                          {entry.student_name}
+                        </span>
                       </div>
-                      <div className="col-span-2 flex items-center text-gray-600">
-                        {entry.completion_time_string}
+                      <div className="col-span-4 sm:col-span-3 flex items-center">
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          {entry.completion_time_string}
+                        </span>
                       </div>
                     </div>
                   ))}
