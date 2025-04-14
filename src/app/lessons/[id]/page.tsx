@@ -18,6 +18,7 @@ import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
 import { ExcelMascot } from '@/components/ExcelMascot'
+import { RobotAvatar } from '@/components/RobotAvatar'
 
 const formatDataContent = (content: string) => {
   // 檢查是否包含表格式數據
@@ -103,7 +104,7 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
           <div className="flex w-full gap-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                <ExcelMascot className="w-full h-full p-1" />
+                <RobotAvatar className="w-full h-full" />
               </div>
             </div>
             <div className="flex-grow">
@@ -164,7 +165,7 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
 };
 
 const getInitialMessage = () => {
-  return `您好，我是 Owlingo，一位友善的 AI 助教，可以協助您學習 Excel！請問今天有什麼需要幫忙的呢？
+  return `您好，我是艾利斯，一位友善的 AI 助教，可以協助您學習 Excel！請問今天有什麼需要幫忙的呢？
 
 為了更好地協助您，建議您可以：
 1. 說明您想完成的任務
@@ -760,16 +761,19 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                       <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
                         <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
                           <iframe 
-                            title="Impostor Escape"
-                        style={{
-                          position: 'absolute',
+                            title="Excel Learning"
+                            style={{
+                              position: 'absolute',
                               top: 0,
                               left: 0,
                               width: '100%',
                               height: '100%',
                               border: 'none'
                             }}
-                            src="https://view.genially.com/67e2a183f77fd165cdb44648"
+                            src={lessonState.currentLesson === 5 
+                              ? "https://view.genially.com/67e2a183f77fd165cdb44648"
+                              : "https://view.genially.com/67fb6e9177e4a8196ea4a50d"
+                            }
                             allowFullScreen={true}
                           />
                         </div>
@@ -951,20 +955,22 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                       <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
                         <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
                           <iframe 
-                            title="Impostor Escape"
-                      style={{
-                        position: 'absolute',
+                            title="Excel Learning"
+                            style={{
+                              position: 'absolute',
                               top: 0,
                               left: 0,
                               width: '100%',
                               height: '100%',
-                              border: 'none',
-                              borderRadius: '0.75rem'
+                              border: 'none'
                             }}
-                            src="https://view.genially.com/67e2a183f77fd165cdb44648"
+                            src={lessonState.currentLesson === 5 
+                              ? "https://view.genially.com/67e2a183f77fd165cdb44648"
+                              : "https://view.genially.com/67fb6e9177e4a8196ea4a50d"
+                            }
                             allowFullScreen={true}
-                    />
-                  </div>
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -1077,7 +1083,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             <div className="p-4 border-b bg-[#F8F9FB] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                  <ExcelMascot className="w-full h-full p-1" />
+                  <RobotAvatar className="w-full h-full" />
                 </div>
                 <div>
                   <h2 className="font-semibold text-gray-900 text-lg">Owlingo</h2>
