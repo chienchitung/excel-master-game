@@ -769,7 +769,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                               height: '100%',
                               border: 'none'
                             }}
-                            src="https://view.genially.com/67629b8b6b4f9b116946050d"
+                            src="https://view.genially.com/67e2a183f77fd165cdb44648"
                             allowFullScreen={true}
                           />
                         </div>
@@ -961,7 +961,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                               border: 'none',
                               borderRadius: '0.75rem'
                             }}
-                            src="https://view.genially.com/67629b8b6b4f9b116946050d"
+                            src="https://view.genially.com/67e2a183f77fd165cdb44648"
                             allowFullScreen={true}
                     />
                   </div>
