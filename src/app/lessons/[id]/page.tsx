@@ -165,7 +165,7 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
 };
 
 const getInitialMessage = () => {
-  return `您好，我是艾利斯，一位友善的 AI 助教，可以協助您學習 Excel！請問今天有什麼需要幫忙的呢？
+  return `您好，我是艾利斯，可以協助您學習 Excel！請問今天有什麼需要幫忙的呢？
 
 為了更好地協助您，建議您可以：
 1. 說明您想完成的任務
@@ -1086,7 +1086,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                   <RobotAvatar className="w-full h-full" />
                 </div>
                 <div>
-                  <h2 className="font-semibold text-gray-900 text-lg">Owlingo</h2>
+                  <h2 className="font-semibold text-gray-900 text-lg">Ellis</h2>
                   <p className="text-sm text-gray-500">隨時為您解答問題</p>
                 </div>
               </div>
