@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, Pencil, CheckCircle, XCircle } from 'lucide-react'
+import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, Pencil, CheckCircle, XCircle, KeyRound } from 'lucide-react'
 import { lessons } from '@/data/lessons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -286,8 +286,17 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
   // 修改 getLessonNumber 函數使用 lesson_id
   const getLessonNumber = (lessonId: string): number => {
-    const lesson = lessons.find(lesson => lesson.lesson_id === lessonId);
-    return lesson ? lesson.number : 0;
+    // Direct mapping of lesson UUIDs to numbers
+    const lessonMapping: {[key: string]: number} = {
+      "a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c": 1, 
+      "b2c3d4e5-f6a7-58b9-ac0d-2e3f4a5b6c7d": 3, 
+      "c3d4e5f6-a7b8-69ca-bd1e-3f4a5b6c7d8e": 2, 
+      "d4e5f6a7-b8c9-7adb-ce2f-4a5b6c7d8e9f": 4, 
+      "e5f6a7b8-c9da-8bec-df3a-5b6c7d8e9f0a": 5
+    };
+    
+    // Return the mapped number or fallback to finding the lesson in the lessons array
+    return lessonMapping[lessonId] || lessons.find(lesson => lesson.lesson_id === lessonId)?.number || 0;
   };
 
   // 修改 getNextLessonId 函數
@@ -305,6 +314,16 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   };
 
   useEffect(() => {
+    // Initialize student ID and name if not already set
+    if (!localStorage.getItem('student_id')) {
+      const randomId = 'user_' + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem('student_id', randomId);
+    }
+    
+    if (!localStorage.getItem('student_name')) {
+      localStorage.setItem('student_name', 'Anonymous User');
+    }
+    
     const fetchExercisesAndProgress = async () => {
       try {
         // Fetch exercises
@@ -316,7 +335,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           .single();
         
         if (error) {
-          console.error('Error fetching exercises:', error);
+          console.error('Error fetching exercises:', error.message || error);
           return;
         }
         
@@ -336,6 +355,28 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             .toISOString()
             .replace('Z', '+08:00');
           localStorage.setItem(`lesson_${currentLessonId}_start_time`, startTime);
+          
+          // For level 1, always set a global start time for the entire game if not already set
+          if (getLessonNumber(currentLessonId) === 1 && !localStorage.getItem('start_time')) {
+            localStorage.setItem('start_time', startTime);
+            console.log('Setting global start_time from lesson 1:', startTime);
+          }
+          
+          // For level 5, ensure a global start time exists
+          if (getLessonNumber(currentLessonId) === 5) {
+            // If no global start time exists, try to use lesson 1's start time
+            if (!localStorage.getItem('start_time')) {
+              const lesson1StartTime = localStorage.getItem('lesson_1_start_time');
+              if (lesson1StartTime) {
+                localStorage.setItem('start_time', lesson1StartTime);
+                console.log('Setting global start_time from lesson 1:', lesson1StartTime);
+              } else {
+                // As a last resort, use the current time
+                localStorage.setItem('start_time', startTime);
+                console.log('Setting fallback global start_time for level 5:', startTime);
+              }
+            }
+          }
         }
         
         // Set current lesson state based on progress
@@ -386,7 +427,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         }
 
       } catch (error) {
-        console.error('Error in fetchExercisesAndProgress:', error);
+        console.error('Error in fetchExercisesAndProgress:', error instanceof Error ? error.message : JSON.stringify(error));
       }
     };
     
@@ -451,7 +492,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     initializeAI();
   }, []);
 
-  const handleAnswerSubmit = () => {
+  const handleAnswerSubmit = async () => {
     if (!exercisesData || exercisesData.length === 0) return;
     
     const userAnswer = lessonState.answer.trim().toLowerCase();
@@ -460,9 +501,11 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     console.log('User answer:', userAnswer);
     console.log('Correct answer:', correctAnswer);
     
-    // Set explanation if available
-    const explanation = exercisesData[0].explanation || '';
-    setCurrentExplanation(explanation);
+    // Set explanation if available and not in level 5
+    if (getLessonNumber(lessonState.currentLesson) !== 5) {
+      const explanation = exercisesData[0].explanation || '';
+      setCurrentExplanation(explanation);
+    }
     
     // Update lesson state
     setLessonState({
@@ -476,6 +519,10 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       const now = new Date();
       const utc8Time = new Date(now.getTime() + (8 * 60 * 60 * 1000));
       
+      // Get the start time from localStorage
+      const startTimeKey = `lesson_${lessonState.currentLesson}_start_time`;
+      const startTimeStr = localStorage.getItem(startTimeKey);
+      
       // Save completion data
       const completionData = {
         lessonId: lessonState.currentLesson,
@@ -486,6 +533,205 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       const completions = JSON.parse(localStorage.getItem('completions') || '[]');
       completions.push(completionData);
       localStorage.setItem('completions', JSON.stringify(completions));
+      
+      // Calculate time spent in seconds
+      let timeSpentSeconds = 0;
+      if (startTimeStr) {
+        const startTime = new Date(startTimeStr);
+        timeSpentSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+        
+        // Format time for display (MM:SS)
+        const minutes = Math.floor(timeSpentSeconds / 60);
+        const seconds = timeSpentSeconds % 60;
+        const formattedTime = `${minutes}分${seconds}秒`;
+        
+        // Save completion time for display
+        localStorage.setItem('completion_time', formattedTime);
+        
+        // Save to Supabase
+        const studentId = localStorage.getItem('student_id') || 'guest';
+        const studentName = localStorage.getItem('student_name') || 'Guest User';
+        
+        // Get the lesson number for database compatibility
+        const lessonNumber = getLessonNumber(lessonState.currentLesson);
+        console.log('Mapped lesson ID to number:', lessonState.currentLesson, ' -> ', lessonNumber);
+        
+        if (!lessonNumber) {
+          console.error('Could not map lesson ID to a lesson number');
+          // Use a fallback numeric value
+          const fallbackLessonNumber = 1;
+          console.log('Using fallback lesson number:', fallbackLessonNumber);
+          
+          // Save learning record to Supabase with fallback number
+          await saveLearningRecord({
+            student_id: studentId,
+            student_name: studentName,
+            lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 代替數字
+            started_at: startTimeStr,
+            completed_at: utc8Time.toISOString(),
+            time_spent_seconds: timeSpentSeconds
+          });
+          
+          // For level 5 (final level), also save to leaderboard
+          if (getLessonNumber(lessonState.currentLesson) === 5) {
+            try {
+              // 確保 start_time 已設置
+              if (!localStorage.getItem('start_time')) {
+                // Check if lesson 1 start time exists and use that
+                const lesson1StartTime = localStorage.getItem('lesson_1_start_time');
+                if (lesson1StartTime) {
+                  localStorage.setItem('start_time', lesson1StartTime);
+                  console.log('Setting global start_time from lesson 1:', lesson1StartTime);
+                } else {
+                  // Fallback to current time if no lesson 1 start time
+                  const currentTime = new Date();
+                  const newGlobalStartTime = new Date(currentTime.getTime() - (currentTime.getTimezoneOffset() * 60000))
+                    .toISOString()
+                    .replace('Z', '+08:00');
+                  localStorage.setItem('start_time', newGlobalStartTime);
+                  console.log('Setting default global start_time:', newGlobalStartTime);
+                }
+              }
+
+              // 計算全部課程總時間
+              const globalStartTimeStr = localStorage.getItem('start_time');
+              let totalTimeSpentSeconds = timeSpentSeconds; // Default to current lesson time
+              
+              if (globalStartTimeStr) {
+                const globalStartDate = new Date(globalStartTimeStr);
+                totalTimeSpentSeconds = Math.floor((now.getTime() - globalStartDate.getTime()) / 1000);
+                
+                // Format total time for display
+                const totalMinutes = Math.floor(totalTimeSpentSeconds / 60);
+                const totalSeconds = totalTimeSpentSeconds % 60;
+                const totalFormattedTime = `${totalMinutes}分${totalSeconds}秒`;
+                
+                console.log('Calculated total time:', totalFormattedTime, '(', totalTimeSpentSeconds, 'seconds)');
+                
+                // Save total completion time for display
+                localStorage.setItem('completion_time', totalFormattedTime);
+                
+                // 使用固定的 50 顆星星，這是完成所有課程後的預期星星數
+                const maxStars = 50;
+                
+                console.log('Preparing leaderboard entry with TOTAL time:', {
+                  student_id: studentId,
+                  student_name: studentName,
+                  completion_time_seconds: totalTimeSpentSeconds,
+                  completion_time_string: totalFormattedTime,
+                  completed_at: utc8Time.toISOString(),
+                  stars_earned: maxStars
+                });
+                
+                await saveLeaderboardEntry({
+                  student_id: studentId,
+                  student_name: studentName,
+                  completion_time_seconds: totalTimeSpentSeconds,
+                  completion_time_string: totalFormattedTime,
+                  completed_at: utc8Time.toISOString(),
+                  stars_earned: maxStars
+                });
+                
+                console.log('Successfully saved to leaderboard');
+              } else {
+                console.error('Unable to calculate total time: missing global start time');
+              }
+            } catch (leaderboardError) {
+              console.error('Failed to save leaderboard entry:', leaderboardError instanceof Error ? leaderboardError.message : JSON.stringify(leaderboardError));
+            }
+          }
+          return;
+        }
+        
+        // Log data being sent to help with debugging
+        console.log('Saving learning record:', {
+          student_id: studentId,
+          student_name: studentName,
+          lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 而不是數字
+          started_at: startTimeStr,
+          completed_at: utc8Time.toISOString(),
+          time_spent_seconds: timeSpentSeconds
+        });
+        
+        // Save learning record to Supabase
+        await saveLearningRecord({
+          student_id: studentId,
+          student_name: studentName,
+          lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 而不是數字
+          started_at: startTimeStr,
+          completed_at: utc8Time.toISOString(),
+          time_spent_seconds: timeSpentSeconds
+        });
+
+        // For level 5 (final level), also save to leaderboard
+        if (getLessonNumber(lessonState.currentLesson) === 5) {
+          try {
+            // 確保 start_time 已設置
+            if (!localStorage.getItem('start_time')) {
+              // Check if lesson 1 start time exists and use that
+              const lesson1StartTime = localStorage.getItem('lesson_1_start_time');
+              if (lesson1StartTime) {
+                localStorage.setItem('start_time', lesson1StartTime);
+                console.log('Setting global start_time from lesson 1:', lesson1StartTime);
+              } else {
+                // Fallback to current time if no lesson 1 start time
+                const currentTime = new Date();
+                const newGlobalStartTime = new Date(currentTime.getTime() - (currentTime.getTimezoneOffset() * 60000))
+                  .toISOString()
+                  .replace('Z', '+08:00');
+                localStorage.setItem('start_time', newGlobalStartTime);
+                console.log('Setting default global start_time:', newGlobalStartTime);
+              }
+            }
+
+            // 計算全部課程總時間
+            const globalStartTimeStr = localStorage.getItem('start_time');
+            let totalTimeSpentSeconds = timeSpentSeconds; // Default to current lesson time
+            
+            if (globalStartTimeStr) {
+              const globalStartDate = new Date(globalStartTimeStr);
+              totalTimeSpentSeconds = Math.floor((now.getTime() - globalStartDate.getTime()) / 1000);
+              
+              // Format total time for display
+              const totalMinutes = Math.floor(totalTimeSpentSeconds / 60);
+              const totalSeconds = totalTimeSpentSeconds % 60;
+              const totalFormattedTime = `${totalMinutes}分${totalSeconds}秒`;
+              
+              console.log('Calculated total time:', totalFormattedTime, '(', totalTimeSpentSeconds, 'seconds)');
+              
+              // Save total completion time for display
+              localStorage.setItem('completion_time', totalFormattedTime);
+              
+              // 使用固定的 50 顆星星，這是完成所有課程後的預期星星數
+              const maxStars = 50;
+              
+              console.log('Preparing leaderboard entry with TOTAL time:', {
+                student_id: studentId,
+                student_name: studentName,
+                completion_time_seconds: totalTimeSpentSeconds,
+                completion_time_string: totalFormattedTime,
+                completed_at: utc8Time.toISOString(),
+                stars_earned: maxStars
+              });
+              
+              await saveLeaderboardEntry({
+                student_id: studentId,
+                student_name: studentName,
+                completion_time_seconds: totalTimeSpentSeconds,
+                completion_time_string: totalFormattedTime,
+                completed_at: utc8Time.toISOString(),
+                stars_earned: maxStars
+              });
+              
+              console.log('Successfully saved to leaderboard');
+            } else {
+              console.error('Unable to calculate total time: missing global start time');
+            }
+          } catch (leaderboardError) {
+            console.error('Failed to save leaderboard entry:', leaderboardError instanceof Error ? leaderboardError.message : JSON.stringify(leaderboardError));
+          }
+        }
+      }
       
       // Update lesson progress to add stars
       updateLessonProgress(
@@ -741,61 +987,47 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     
     return (
       <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-[#2B4EFF] flex items-center justify-center flex-shrink-0">
-            <Pencil className="h-5 w-5 text-white" />
-          </div>
+        <div className="flex items-start">
           <div className="flex-1">
-            <h3 className="font-semibold text-lg mb-3">練習作業</h3>
+            <div className="flex items-center mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#2B4EFF] flex items-center justify-center flex-shrink-0 mr-3">
+                <KeyRound className="h-5 w-5 text-white" />
+              </div>
+              <h3 className="font-semibold text-lg">終極密碼</h3>
+            </div>
             
-            {lessonState.hasSubmitted ? (
-              <div className={`p-4 rounded-lg mb-4 ${lessonState.isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
-                <div className="flex items-center gap-2">
-                  {lessonState.isCorrect ? (
-                    <CheckCircle className="h-5 w-5" />
-                  ) : (
-                    <XCircle className="h-5 w-5" />
-                  )}
-                  <p className="font-medium">
-                    {lessonState.isCorrect ? '答案正確！' : '答案不正確，請重試。'}
+            {lessonState.hasSubmitted && lessonState.isCorrect && (
+              <div className="p-4 rounded-lg mb-4 bg-[#E5FFE1] border border-[#C8F0C3]">
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-[#58CC02] mr-2" />
+                  <p className="font-medium text-[#58CC02]">
+                    答案正確！
                   </p>
                 </div>
-                {currentExplanation && (
-                  <div className="mt-3 p-3 bg-white rounded-lg text-gray-700">
-                    <p className="font-medium mb-1">解釋說明：</p>
-                    <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
-                          li: ({children}) => <li className="mb-1">{children}</li>,
-                          code: ({ children, className, node, ...props }) => {
-                            const match = /language-(\w+)/.exec(className || '')
-                            const inline = !match
-                            return inline 
-                              ? <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
-                              : <code>{children}</code>
-                          }
-                        }}
-                      >
-                        {formatExplanation(currentExplanation)}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                )}
               </div>
-            ) : null}
+            )}
+            
+            {lessonState.hasSubmitted && !lessonState.isCorrect && (
+              <div className="p-4 rounded-lg mb-4 bg-[#FFE5E5] border border-[#F0C3C3]">
+                <div className="flex items-center">
+                  <XCircle className="h-5 w-5 text-[#FF4B4B] mr-2" />
+                  <p className="font-medium text-[#FF4B4B]">
+                    答案不正確，請重試。
+                  </p>
+                </div>
+              </div>
+            )}
             
             <div className="space-y-4">
               <div className="flex flex-col">
-                <label htmlFor="answer" className="font-medium text-gray-700 mb-1">
+                <label htmlFor="answer" className="font-medium text-gray-700 mb-2">
                   輸入你的答案：
                 </label>
                 <div className="relative">
                   <input
                     id="answer"
                     type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="在此輸入答案..."
                     value={lessonState.answer}
                     onChange={handleAnswerChange}
@@ -805,7 +1037,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               </div>
               {!lessonState.hasSubmitted || !lessonState.isCorrect ? (
                 <button
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="w-full px-4 py-3 bg-[#2B4EFF] text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                   onClick={handleAnswerSubmit}
                   disabled={!lessonState.answer.trim()}
                 >
@@ -814,10 +1046,10 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               ) : (
                 lessonState.isCorrect && (
                   <button
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    className="w-full px-4 py-3 bg-[#58CC02] text-white font-medium rounded-lg hover:bg-[#46a001] transition-colors"
                     onClick={handleContinue}
                   >
-                    {getNextLessonId(lessonState.currentLesson) ? '前往下一課' : '完成課程'}
+                    完成課程
                   </button>
                 )
               )}

@@ -170,9 +170,18 @@ export default function HomePage() {
   const handleReset = () => {
     // 清除所有追蹤資料
     localStorage.removeItem('student_id');
+    localStorage.removeItem('student_name');
     localStorage.removeItem('start_time');
     localStorage.removeItem('completion_time');
     localStorage.removeItem('completion_time_seconds');
+    
+    // 清除所有關卡開始時間
+    for (let i = 1; i <= 5; i++) {
+      localStorage.removeItem(`lesson_${i}_start_time`);
+    }
+    
+    // 清除所有完成記錄
+    localStorage.removeItem('completions');
     
     // 重置進度
     resetProgress();
@@ -189,6 +198,7 @@ export default function HomePage() {
     // 重置學號狀態
     setHasStudentId(false);
     setStudentId("");
+    setStudentName("");
     
     // 重新導向到首頁
     router.refresh();
@@ -197,7 +207,12 @@ export default function HomePage() {
   const handleStartLearning = () => {
     if (hasStudentId) {
       const currentLessonId = getNextIncompleteLesson();
-      router.push(`/lessons/${currentLessonId}`);
+      const mappedLesson = mappedLessons.find(lesson => lesson.lesson_id === currentLessonId);
+      if (mappedLesson) {
+        router.push(`/lessons/${mappedLesson.lesson_id}`);
+      } else {
+        router.push(`/lessons/${mappedLessons[0].lesson_id}`);
+      }
     } else {
       setShowStudentIdDialog(true);
     }
@@ -211,11 +226,24 @@ export default function HomePage() {
         .toISOString()
         .replace('Z', '+08:00');
 
+      // 清除之前的任何課程開始時間記錄
+      for (let i = 1; i <= 5; i++) {
+        localStorage.removeItem(`lesson_${i}_start_time`);
+      }
+      
       localStorage.setItem('student_id', studentId.trim());
       localStorage.setItem('student_name', studentName.trim());
       localStorage.setItem('start_time', startTime);
+      console.log('Setting global start_time on student ID submission:', startTime);
       setHasStudentId(true);
-      router.push('/lessons/1');
+      
+      // 直接導航到第一個課程
+      const firstLesson = mappedLessons.find(lesson => lesson.number === 1);
+      if (firstLesson) {
+        router.push(`/lessons/${firstLesson.lesson_id}`);
+      } else {
+        router.push(`/lessons/${mappedLessons[0].lesson_id}`);
+      }
     }
   };
 

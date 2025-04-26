@@ -46,21 +46,40 @@ export interface LessonOrderMapping {
 }
 
 export async function saveLearningRecord(record: Omit<LearningRecord, 'id'>) {
-  const { data, error } = await supabase
-    .from('learning_records')
-    .insert([record])
-    .select()
+  try {
+    // Validate input data
+    if (!record.student_id || !record.student_name || !record.lesson_id || 
+        !record.started_at || !record.completed_at) {
+      throw new Error('Missing required fields for learning record');
+    }
 
-  if (error) {
-    console.error('Error saving learning record:', error)
-    throw error
+    const { data, error } = await supabase
+      .from('learning_records')
+      .insert([record])
+      .select();
+
+    if (error) {
+      console.error('Error saving learning record:', error.message || JSON.stringify(error));
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in saveLearningRecord:', error instanceof Error ? error.message : JSON.stringify(error));
+    throw error;
   }
-
-  return data
 }
 
 export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 'rank' | 'started_at'>) {
   try {
+    // 驗證必要的數據
+    if (!entry.student_id || !entry.student_name || !entry.completion_time_seconds || 
+        !entry.completion_time_string || !entry.completed_at) {
+      const errorMsg = 'Missing required fields for leaderboard entry';
+      console.error(errorMsg, entry);
+      throw new Error(errorMsg);
+    }
+    
     // 從 localStorage 獲取開始時間
     const startTime = localStorage.getItem('start_time');
     if (!startTime) {
@@ -68,23 +87,66 @@ export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 
       throw new Error('Missing start time');
     }
 
-    // 直接插入新記錄，不檢查是否存在
-    const { data, error } = await supabase
-      .from('leaderboard')
-      .insert([{
-        ...entry,
-        started_at: startTime // 使用開始學習時的時間
-      }])
-      .select();
+    // 打印將要儲存的數據用於調試
+    console.log('Saving leaderboard entry:', {
+      ...entry,
+      started_at: startTime
+    });
 
-    if (error) {
-      console.error('Error saving leaderboard entry:', error);
-      throw error;
+    // 檢查是否已經存在該學生的記錄
+    const { data: existingEntries, error: fetchError } = await supabase
+      .from('leaderboard')
+      .select('id')
+      .eq('student_id', entry.student_id);
+      
+    if (fetchError) {
+      console.error('Error checking for existing entries:', fetchError.message || JSON.stringify(fetchError));
+      throw fetchError;
+    }
+    
+    let result;
+    
+    if (existingEntries && existingEntries.length > 0) {
+      // 如果存在記錄，更新最新的一筆
+      console.log('Updating existing leaderboard entry for student:', entry.student_id);
+      const { data, error } = await supabase
+        .from('leaderboard')
+        .update({
+          ...entry,
+          started_at: startTime,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingEntries[0].id)
+        .select();
+        
+      if (error) {
+        console.error('Error updating leaderboard entry:', error.message || JSON.stringify(error));
+        throw error;
+      }
+      
+      result = data;
+    } else {
+      // 如果不存在記錄，插入新記錄
+      console.log('Creating new leaderboard entry for student:', entry.student_id);
+      const { data, error } = await supabase
+        .from('leaderboard')
+        .insert([{
+          ...entry,
+          started_at: startTime
+        }])
+        .select();
+
+      if (error) {
+        console.error('Error saving leaderboard entry:', error.message || JSON.stringify(error));
+        throw error;
+      }
+      
+      result = data;
     }
 
-    return data;
+    return result;
   } catch (error) {
-    console.error('Error in saveLeaderboardEntry:', error);
+    console.error('Error in saveLeaderboardEntry:', error instanceof Error ? error.message : JSON.stringify(error));
     throw error;
   }
 }
