@@ -1336,7 +1336,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                         <li>使用 IF 函數進行條件判斷</li>
                         <li>創建樞紐分析表進行數據分析</li>
                       </ul>
-                      <p className="text-blue-600 font-semibold">完成測驗後，您將獲得最終答案代碼！</p>
+                      <p className="text-blue-600 font-semibold">完成測驗後，您將獲得終極密碼！</p>
                     </div>
                       </div>
                     </div>
@@ -1399,8 +1399,13 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             <div className="flex-1">
               {getLessonNumber(lessonState.currentLesson) !== 5 && (
                 <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 ml-auto text-sm md:text-base"
+                  className={`flex items-center gap-2 ml-auto text-sm md:text-base ${
+                    lessonState.completedLessons.includes(lessonState.currentLesson)
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-blue-300 text-white cursor-not-allowed'
+                  }`}
                   onClick={handleNextLesson}
+                  disabled={!lessonState.completedLessons.includes(lessonState.currentLesson)}
                 >
                   下一關
                   <ChevronRight className="h-4 w-4" />

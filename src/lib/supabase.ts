@@ -113,8 +113,7 @@ export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 
         .from('leaderboard')
         .update({
           ...entry,
-          started_at: startTime,
-          updated_at: new Date().toISOString()
+          started_at: startTime
         })
         .eq('id', existingEntries[0].id)
         .select();

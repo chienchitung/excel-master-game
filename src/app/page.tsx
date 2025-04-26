@@ -555,21 +555,28 @@ export default function HomePage() {
                   </Button>
                 </div>
                 <div className="space-y-4">
-                  <div 
-                    className="flex items-center justify-between p-3 bg-[#F5F7FF] rounded-lg cursor-pointer hover:bg-[#EEF1FF] transition-colors"
-                    onClick={() => setShowLeaderboardDialog(true)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#2B4EFF] flex items-center justify-center text-white font-bold">
-                        {playerRank || '--'}
+                  {/* 修改排行榜顯示，僅在完成所有課程後顯示總時間和排名 */}
+                  {progress.completedLessons.length === mappedLessons.length && mappedLessons.length > 0 ? (
+                    <div 
+                      className="flex items-center justify-between p-3 bg-[#F5F7FF] rounded-lg cursor-pointer hover:bg-[#EEF1FF] transition-colors"
+                      onClick={() => setShowLeaderboardDialog(true)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#2B4EFF] flex items-center justify-center text-white font-bold">
+                          {playerRank || '--'}
+                        </div>
+                        <div>
+                          <div className="font-medium">您的排名</div>
+                          <div className="text-sm text-gray-500">{completionTime || '--:--'}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium">您的排名</div>
-                        <div className="text-sm text-gray-500">{completionTime || '--:--'}</div>
-                      </div>
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
                     </div>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
-                  </div>
+                  ) : (
+                    <div className="p-3 text-center text-gray-500 bg-gray-50 rounded-lg">
+                      完成所有關卡後顯示總時間和排名
+                    </div>
+                  )}
                 </div>
               </div>
 
