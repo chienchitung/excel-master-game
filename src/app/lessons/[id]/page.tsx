@@ -6,19 +6,20 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift } from 'lucide-react'
+import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, Pencil, CheckCircle, XCircle } from 'lucide-react'
 import { lessons } from '@/data/lessons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { State, type ChatMessage } from '@/types/lesson'
 import { getProgress, updateLessonProgress } from '@/lib/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats } from '@/lib/supabase'
+import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats, supabase } from '@/lib/supabase'
 import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
 import { ExcelMascot } from '@/components/ExcelMascot'
 import { RobotAvatar } from '@/components/RobotAvatar'
+import type { Components } from 'react-markdown'
 
 const formatDataContent = (content: string) => {
   // 檢查是否包含表格式數據
@@ -143,7 +144,14 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
                           <p className="mb-4 last:mb-0 whitespace-pre-wrap">
                             {children}
                           </p>
-                        )
+                        ),
+                        code: ({ children, className, node, ...props }) => {
+                          const match = /language-(\w+)/.exec(className || '')
+                          const inline = !match
+                          return inline 
+                            ? <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
+                            : <code>{children}</code>
+                        }
                       }}
                     >
                       {formatDataContent(displayedMessage)}
@@ -184,6 +192,65 @@ interface ChatContext {
   lessonInfo: string;
 }
 
+// Add table rendering for practice exercises
+const formatExerciseContent = (content: string) => {
+  // Check if the content contains table-like data with line-separated rows
+  if (content.includes('\\n\\n')) {
+    // Format table data correctly
+    return content
+      .split('\\n\\n')
+      .map(line => {
+        // Process each line to create proper table formatting
+        if (line.includes('|')) {
+          return line.replace(/\\n/g, '\n');
+        }
+        return line;
+      })
+      .join('\n\n');
+  }
+  // If it looks like a table with pipe separators
+  if (content.includes('|')) {
+    return content.replace(/\\n/g, '\n');
+  }
+  
+  // Handle numbered lists with line breaks
+  let formattedContent = content
+    // Replace escaped newlines before numbered items with actual newlines
+    .replace(/\\n(\d+)\./g, '\n$1.')
+    // Replace all other escaped newlines with actual newlines
+    .replace(/\\n/g, '\n')
+    // Add a space after numbered bullets if missing
+    .replace(/(\d+)\.([\S])/g, '$1. $2');
+  
+  // Handle special characters and formatting
+  formattedContent = formattedContent
+    // Format function names with backticks for code style
+    .replace(/=([A-Z]+)\(/g, '=`$1(`')
+    .replace(/\)/g, '`)');
+  
+  return formattedContent;
+};
+
+// For better explanation formatting in the answer section
+const formatExplanation = (explanation: string) => {
+  if (!explanation) return '';
+  
+  // First handle the basic formatting
+  let formatted = explanation
+    // Replace escaped newlines before numbered items with actual newlines
+    .replace(/\\n(\d+)\./g, '\n$1.')
+    // Replace all other escaped newlines with actual newlines
+    .replace(/\\n/g, '\n')
+    // Add space after numbered items if missing
+    .replace(/(\d+)\.([\S])/g, '$1. $2');
+  
+  // Format Excel functions as code
+  formatted = formatted
+    .replace(/=([A-Z]+)\(([^)]+)\)/g, '`=$1($2)`');
+  
+  return formatted;
+};
+
 export default function ExcelLearningPlatform({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const [showRewardDialog, setShowRewardDialog] = useState(false);
@@ -199,7 +266,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     average_time: '--:--'
   });
   const [lessonState, setLessonState] = useState<State>({
-    currentLesson: parseInt(resolvedParams.id),
+    currentLesson: resolvedParams.id,
     completed: false,
     stars: 0,
     completedLessons: [],
@@ -214,62 +281,124 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     streak: 1
   });
   const [isExpanded, setIsExpanded] = useState(false);
+  const [exercisesData, setExercisesData] = useState<Array<{question: string, answer: string, explanation: string}>>([]);
+  const [currentExplanation, setCurrentExplanation] = useState<string | null>(null);
+
+  // 修改 getLessonNumber 函數使用 lesson_id
+  const getLessonNumber = (lessonId: string): number => {
+    const lesson = lessons.find(lesson => lesson.lesson_id === lessonId);
+    return lesson ? lesson.number : 0;
+  };
+
+  // 修改 getNextLessonId 函數
+  const getNextLessonId = (currentId: string): string | null => {
+    const currentNumber = getLessonNumber(currentId);
+    if (currentNumber >= 5) return null;
+    return lessons.find(lesson => lesson.number === currentNumber + 1)?.lesson_id || null;
+  };
+
+  // 修改 getPrevLessonId 函數
+  const getPrevLessonId = (currentId: string): string | null => {
+    const currentNumber = getLessonNumber(currentId);
+    if (currentNumber <= 1) return null;
+    return lessons.find(lesson => lesson.number === currentNumber - 1)?.lesson_id || null;
+  };
 
   useEffect(() => {
-    const progress = getProgress();
-    const currentLessonId = parseInt(resolvedParams.id);
-    const isLessonCompleted = progress.completedLessons.includes(currentLessonId);
-    const currentQuestion = lessons.find(lesson => lesson.id === currentLessonId)?.questions?.[0];
-    
-    // 記錄關卡開始時間
-    if (!isLessonCompleted) {
-      const now = new Date();
-      const startTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
-        .toISOString()
-        .replace('Z', '+08:00');
-      localStorage.setItem(`lesson_${currentLessonId}_start_time`, startTime);
-    }
-    
-    setLessonState(prev => ({
-      ...prev,
-      stars: progress.stars,
-      completedLessons: progress.completedLessons,
-      hasSubmitted: isLessonCompleted,
-      isCorrect: isLessonCompleted,
-      answer: isLessonCompleted && currentQuestion ? currentQuestion.answer : "",
-      exp: progress.exp,
-      level: progress.level,
-      dailyProgress: progress.dailyProgress,
-      streak: progress.streak || 1
-    }));
+    const fetchExercisesAndProgress = async () => {
+      try {
+        // Fetch exercises
+        const currentLessonId = resolvedParams.id;
+        const { data, error } = await supabase
+          .from('lessons')
+          .select('practice_exercises')
+          .eq('id', currentLessonId)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching exercises:', error);
+          return;
+        }
+        
+        if (data && data.practice_exercises) {
+          const parsedExercises = JSON.parse(data.practice_exercises);
+          setExercisesData(parsedExercises);
+        }
 
-    // 讀取完成時間和排行榜統計
-    if (showRewardDialog) {
-      const savedTime = localStorage.getItem('completion_time');
-      if (savedTime) {
-        setCompletionTime(savedTime);
+        // Get progress
+        const progress = getProgress();
+        const isLessonCompleted = progress.completedLessons.includes(currentLessonId);
+        
+        // 記錄關卡開始時間
+        if (!isLessonCompleted) {
+          const now = new Date();
+          const startTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
+            .toISOString()
+            .replace('Z', '+08:00');
+          localStorage.setItem(`lesson_${currentLessonId}_start_time`, startTime);
+        }
+        
+        // Set current lesson state based on progress
+        setLessonState(prev => ({
+          ...prev,
+          currentLesson: currentLessonId,
+          stars: progress.stars,
+          completedLessons: progress.completedLessons,
+          hasSubmitted: isLessonCompleted,
+          isCorrect: isLessonCompleted,
+          answer: isLessonCompleted ? (prev.answer || "") : "",
+          exp: progress.exp,
+          level: progress.level,
+          dailyProgress: progress.dailyProgress,
+          streak: progress.streak || 1
+        }));
+
+        // If lesson was already completed, get the explanation
+        if (isLessonCompleted && exercisesData.length > 0) {
+          setCurrentExplanation(exercisesData[0].explanation || '');
+        }
+
+        // 讀取完成時間和排行榜統計
+        if (showRewardDialog) {
+          const savedTime = localStorage.getItem('completion_time');
+          if (savedTime) {
+            setCompletionTime(savedTime);
+          }
+
+          // 獲取玩家排名
+          const studentId = localStorage.getItem('student_id') || 'guest';
+          getPlayerRank(studentId)
+            .then(rank => {
+              setPlayerRank(rank);
+            })
+            .catch(error => {
+              console.error('Failed to fetch player rank:', error);
+            });
+
+          // 獲取排行榜統計數據
+          getLeaderboardStats()
+            .then(stats => {
+              setLeaderboardStats(stats);
+            })
+            .catch(error => {
+              console.error('Failed to fetch leaderboard stats:', error);
+            });
+        }
+
+      } catch (error) {
+        console.error('Error in fetchExercisesAndProgress:', error);
       }
+    };
+    
+    fetchExercisesAndProgress();
+  }, [resolvedParams.id, showRewardDialog, exercisesData.length]);
 
-      // 獲取玩家排名
-      const studentId = localStorage.getItem('student_id') || 'guest';
-      getPlayerRank(studentId)
-        .then(rank => {
-          setPlayerRank(rank);
-        })
-        .catch(error => {
-          console.error('Failed to fetch player rank:', error);
-        });
-
-      // 獲取排行榜統計數據
-      getLeaderboardStats()
-        .then(stats => {
-          setLeaderboardStats(stats);
-        })
-        .catch(error => {
-          console.error('Failed to fetch leaderboard stats:', error);
-        });
+  // Add an extra effect to update explanation when exercises data changes
+  useEffect(() => {
+    if (lessonState.hasSubmitted && exercisesData.length > 0) {
+      setCurrentExplanation(exercisesData[0].explanation || '');
     }
-  }, [resolvedParams.id, showRewardDialog]);
+  }, [exercisesData, lessonState.hasSubmitted]);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -287,7 +416,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
   useEffect(() => {
     if (tabsRef.current) {
-      const activeValue = lessonState.currentLesson === 5 ? 'game' : 'content';
+      const activeValue = getLessonNumber(lessonState.currentLesson) === 5 ? 'game' : 'content';
       const tabsElement = tabsRef.current;
       const activeTab = tabsElement.querySelector(`[data-state="active"]`);
       if (!activeTab) {
@@ -299,7 +428,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     }
   }, [lessonState.currentLesson]);
 
-  const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
+  // 修改獲取當前課程的方式
+  const currentLesson = lessons.find(lesson => lesson.lesson_id === lessonState.currentLesson);
 
   useEffect(() => {
     // Initialize Gemini API with your API key
@@ -321,198 +451,75 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     initializeAI();
   }, []);
 
-  const handleAnswerSubmit = async () => {
-    try {
-      const currentQuestion = lessons.find(lesson => lesson.id === lessonState.currentLesson)?.questions?.[0];
-      if (!currentQuestion) {
-        console.error('Question not found');
-        return;
-      }
-
-      const isCorrect = lessonState.answer.toLowerCase() === currentQuestion.answer.toLowerCase();
-      
-      // 更新提交狀態
-      setLessonState(prev => ({
-        ...prev,
-        hasSubmitted: true,
-        isCorrect: isCorrect
-      }));
-      
-      // 正確處理 UTC+8 時間
+  const handleAnswerSubmit = () => {
+    if (!exercisesData || exercisesData.length === 0) return;
+    
+    const userAnswer = lessonState.answer.trim().toLowerCase();
+    const correctAnswer = exercisesData[0].answer.trim().toLowerCase();
+    
+    console.log('User answer:', userAnswer);
+    console.log('Correct answer:', correctAnswer);
+    
+    // Set explanation if available
+    const explanation = exercisesData[0].explanation || '';
+    setCurrentExplanation(explanation);
+    
+    // Update lesson state
+    setLessonState({
+      ...lessonState,
+      hasSubmitted: true,
+      isCorrect: userAnswer === correctAnswer,
+    });
+    
+    // Record completion time and update progress (only if correct)
+    if (userAnswer === correctAnswer) {
       const now = new Date();
-      const currentTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
-        .toISOString()
-        .replace('Z', '+08:00');
+      const utc8Time = new Date(now.getTime() + (8 * 60 * 60 * 1000));
       
-      console.log('Current time:', currentTime);
-      setCompletionTime(currentTime);
-
-      // 如果答案錯誤，允許重新提交
-      if (!isCorrect) {
-        setTimeout(() => {
-          setLessonState(prev => ({
-            ...prev,
-            hasSubmitted: false
-          }));
-        }, 1500);
-        return;
-      }
-
-      if (!lessonState.completedLessons.includes(lessonState.currentLesson)) {
-        const studentId = localStorage.getItem('student_id');
-        const studentName = localStorage.getItem('student_name');
-
-        // 確保有學生ID和姓名
-        if (!studentId || !studentName) {
-          console.error('Missing student information:', { studentId, studentName });
-          alert('請先輸入學號和姓名');
-          return;
-        }
-
-        // 獲取關卡開始時間
-        const startTime = localStorage.getItem(`lesson_${lessonState.currentLesson}_start_time`);
-        if (!startTime) {
-          console.error('Missing lesson start time');
-          // 如果沒有開始時間，重新設置
-          const newStartTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
-            .toISOString()
-            .replace('Z', '+08:00');
-          localStorage.setItem(`lesson_${lessonState.currentLesson}_start_time`, newStartTime);
-          return;
-        }
-
-        try {
-          // 計算花費時間（秒）
-          const startDate = new Date(startTime);
-          const endDate = new Date(currentTime);
-          const timeSpentSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
-
-          console.log('Saving learning record:', {
-            student_id: studentId,
-            student_name: studentName,
-            lesson_id: lessonState.currentLesson,
-            started_at: startTime,
-            completed_at: currentTime,
-            time_spent_seconds: timeSpentSeconds
-          });
-
-          // 儲存學習記錄到 Supabase
-          await saveLearningRecord({
-            student_id: studentId,
-            student_name: studentName,
-            lesson_id: lessonState.currentLesson,
-            started_at: startTime,
-            completed_at: currentTime,
-            time_spent_seconds: timeSpentSeconds
-          });
-
-          // 如果是第五關且答案正確，計算完成時間並記錄到排行榜
-          if (lessonState.currentLesson === 5) {
-            const gameStartTime = localStorage.getItem('start_time');
-            if (!gameStartTime) {
-              console.error('Missing game start time');
-              alert('無法取得遊戲開始時間，請重新開始遊戲');
-              return;
-            }
-
-            try {
-              const startDate = new Date(gameStartTime);
-              const endDate = new Date(currentTime);
-              const totalTimeInSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
-              
-              console.log('Calculating completion time:', {
-                startDate,
-                endDate,
-                totalTimeInSeconds
-              });
-
-              const minutes = Math.floor(totalTimeInSeconds / 60);
-              const seconds = totalTimeInSeconds % 60;
-              const timeString = `${minutes}分${seconds}秒`;
-              
-              // 儲存到 localStorage
-              localStorage.setItem('completion_time', timeString);
-              localStorage.setItem('completion_time_seconds', totalTimeInSeconds.toString());
-              setCompletionTime(timeString);
-
-              const leaderboardEntry = {
-                student_id: studentId,
-                student_name: studentName,
-                completion_time_seconds: totalTimeInSeconds,
-                completion_time_string: timeString,
-                stars_earned: 50,
-                completed_at: currentTime
-              };
-
-              console.log('Preparing to save leaderboard entry:', leaderboardEntry);
-              
-              const result = await saveLeaderboardEntry(leaderboardEntry);
-              console.log('Successfully saved leaderboard entry:', result);
-              
-              // 獲取玩家排名
-              const rank = await getPlayerRank(studentId);
-              setPlayerRank(rank);
-
-              // 重新獲取排行榜數據
-              const stats = await getLeaderboardStats();
-              setLeaderboardStats(stats);
-            } catch (error) {
-              console.error('Error in leaderboard operations:', error);
-              alert('排行榜更新失敗，但您的進度已保存');
-            }
-          }
-
-          // 更新進度
-          const updatedStars = lessonState.stars + 10;
-          const updatedProgress = updateLessonProgress(
-            lessonState.currentLesson,
-            10, // 星星獎勵
-            20  // 經驗值獎勵
-          );
-          
-          setLessonState(prev => ({
-            ...prev,
-            stars: updatedStars,
-            completedLessons: updatedProgress.completedLessons,
-            exp: updatedProgress.exp,
-            level: updatedProgress.level,
-            dailyProgress: updatedProgress.dailyProgress
-          }));
-        } catch (error) {
-          console.error('Error saving records:', error);
-          alert('保存記錄時發生錯誤，請稍後再試');
-          setLessonState(prev => ({
-            ...prev,
-            hasSubmitted: false
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      alert('發生未預期的錯誤，請重新整理頁面後再試');
-      setLessonState(prev => ({
-        ...prev,
-        hasSubmitted: false
-      }));
+      // Save completion data
+      const completionData = {
+        lessonId: lessonState.currentLesson,
+        completedAt: utc8Time.toISOString(),
+      };
+      
+      // Add completion data to localStorage
+      const completions = JSON.parse(localStorage.getItem('completions') || '[]');
+      completions.push(completionData);
+      localStorage.setItem('completions', JSON.stringify(completions));
+      
+      // Update lesson progress to add stars
+      updateLessonProgress(
+        lessonState.currentLesson,
+        10, // 10 stars for correct answer
+        20  // 20 XP for correct answer
+      );
     }
   };
 
   const handleNextLesson = () => {
-    if (lessonState.currentLesson < lessons.length) {
-      router.push(`/lessons/${lessonState.currentLesson + 1}`);
+    const nextId = getNextLessonId(lessonState.currentLesson);
+    if (nextId) {
+      router.push(`/lessons/${nextId}`);
     }
   };
 
   const handlePrevLesson = () => {
-    if (lessonState.currentLesson > 1) {
-      router.push(`/lessons/${lessonState.currentLesson - 1}`);
+    const prevId = getPrevLessonId(lessonState.currentLesson);
+    if (prevId) {
+      router.push(`/lessons/${prevId}`);
     }
   };
 
   const handleAnswerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLessonState(prev => ({
       ...prev,
-      answer: e.target.value
+      answer: e.target.value,
+      // Only reset hasSubmitted and isCorrect when the user changes the answer
+      // after having submitted a wrong answer
+      ...(prev.hasSubmitted && !prev.isCorrect ? {
+        hasSubmitted: false,
+        isCorrect: false
+      } : {})
     }));
   };
 
@@ -527,7 +534,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     setIsExpanded(!isExpanded);
   };
 
-  const showTabs = lessonState.currentLesson === 5 ? ['game'] : ['practice', 'content']
+  const showTabs = getLessonNumber(lessonState.currentLesson) === 5 ? ['game'] : ['practice', 'content'];
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -571,8 +578,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         isUser: msg.isUser
       }));
       
-      const currentLesson = lessons.find(lesson => lesson.id === lessonState.currentLesson);
-      const lessonContext = `當前課程：第 ${lessonState.currentLesson} 關 - ${currentLesson?.title}
+      const lessonContext = `當前課程：第 ${getLessonNumber(lessonState.currentLesson)} 關 - ${currentLesson?.title}
 課程內容：${currentLesson?.description}`;
 
       const chatContext: ChatContext = {
@@ -619,7 +625,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   };
 
   const handleContinue = () => {
-    if (lessonState.currentLesson === 5) {
+    if (getLessonNumber(lessonState.currentLesson) === 5) {
       // 第五關顯示獎勵兌換視窗
       setShowRewardDialog(true);
     } else {
@@ -645,6 +651,181 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       // 導向到問卷連結
       window.location.href = 'https://www.surveycake.com/s/nApPl';
     }
+  };
+
+  // Update renderQuestion function to properly display only the answer input field
+  const renderQuestion = () => {
+    if (exercisesData.length === 0) return null;
+    
+    return (
+      <div className="bg-gray-50 rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-[#58CC02] flex items-center justify-center flex-shrink-0">
+            <MessageCircle className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-lg mb-3">您的答案</h3>
+            <div className="space-y-4">
+              <input
+                type="text"
+                value={lessonState.answer}
+                onChange={handleAnswerChange}
+                className="w-full p-4 border border-gray-200 rounded-xl text-lg focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent"
+                placeholder="輸入您的答案..."
+                disabled={lessonState.hasSubmitted && lessonState.isCorrect}
+              />
+              {lessonState.hasSubmitted && (
+                <div className={`p-4 rounded-xl ${
+                  lessonState.isCorrect 
+                    ? 'bg-[#E5FFE1] text-[#58CC02]' 
+                    : 'bg-[#FFE5E5] text-[#FF4B4B]'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {lessonState.isCorrect ? (
+                      <>
+                        <Star className="h-5 w-5 fill-current" />
+                        <span className="font-medium">太棒了！答案正確！獲得 10 星星！</span>
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-5 w-5" />
+                        <span className="font-medium">答案不正確，請重試。</span>
+                      </>
+                    )}
+                  </div>
+                  {currentExplanation && (
+                    <div className="mt-3 p-3 bg-white rounded-lg text-gray-700">
+                      <h4 className="font-medium mb-1">解釋說明：</h4>
+                      <div className="prose prose-sm max-w-none">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
+                            li: ({children}) => <li className="mb-1">{children}</li>,
+                            code: ({ children, className, node, ...props }) => {
+                              const match = /language-(\w+)/.exec(className || '')
+                              const inline = !match
+                              return inline 
+                                ? <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
+                                : <code>{children}</code>
+                            }
+                          }}
+                        >
+                          {formatExplanation(currentExplanation)}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <Button 
+                onClick={lessonState.isCorrect ? handleContinue : handleAnswerSubmit}
+                className={`w-full py-4 text-lg font-semibold rounded-xl transition-transform hover:scale-105 ${
+                  lessonState.hasSubmitted && lessonState.isCorrect
+                    ? 'bg-[#58CC02] hover:bg-[#46a001]'
+                    : 'bg-[#2B4EFF] hover:bg-blue-700'
+                } text-white`}
+              >
+                {lessonState.hasSubmitted && lessonState.isCorrect ? '繼續' : '檢查答案'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Update the final question rendering for consistency
+  const renderFinalQuestion = () => {
+    if (!exercisesData || exercisesData.length === 0) return null;
+    
+    return (
+      <div className="bg-white rounded-xl p-6 border border-gray-200">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-[#2B4EFF] flex items-center justify-center flex-shrink-0">
+            <Pencil className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-lg mb-3">練習作業</h3>
+            
+            {lessonState.hasSubmitted ? (
+              <div className={`p-4 rounded-lg mb-4 ${lessonState.isCorrect ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                <div className="flex items-center gap-2">
+                  {lessonState.isCorrect ? (
+                    <CheckCircle className="h-5 w-5" />
+                  ) : (
+                    <XCircle className="h-5 w-5" />
+                  )}
+                  <p className="font-medium">
+                    {lessonState.isCorrect ? '答案正確！' : '答案不正確，請重試。'}
+                  </p>
+                </div>
+                {currentExplanation && (
+                  <div className="mt-3 p-3 bg-white rounded-lg text-gray-700">
+                    <p className="font-medium mb-1">解釋說明：</p>
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
+                          li: ({children}) => <li className="mb-1">{children}</li>,
+                          code: ({ children, className, node, ...props }) => {
+                            const match = /language-(\w+)/.exec(className || '')
+                            const inline = !match
+                            return inline 
+                              ? <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
+                              : <code>{children}</code>
+                          }
+                        }}
+                      >
+                        {formatExplanation(currentExplanation)}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+            
+            <div className="space-y-4">
+              <div className="flex flex-col">
+                <label htmlFor="answer" className="font-medium text-gray-700 mb-1">
+                  輸入你的答案：
+                </label>
+                <div className="relative">
+                  <input
+                    id="answer"
+                    type="text"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="在此輸入答案..."
+                    value={lessonState.answer}
+                    onChange={handleAnswerChange}
+                    disabled={lessonState.hasSubmitted && lessonState.isCorrect}
+                  />
+                </div>
+              </div>
+              {!lessonState.hasSubmitted || !lessonState.isCorrect ? (
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  onClick={handleAnswerSubmit}
+                  disabled={!lessonState.answer.trim()}
+                >
+                  提交答案
+                </button>
+              ) : (
+                lessonState.isCorrect && (
+                  <button
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    onClick={handleContinue}
+                  >
+                    {getNextLessonId(lessonState.currentLesson) ? '前往下一課' : '完成課程'}
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -725,14 +906,14 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               </Link>
               <div className="h-4 w-px bg-gray-200" />
               <Badge variant="outline" className="bg-blue-600 text-white border-0 text-sm md:text-base">
-                第 {lessonState.currentLesson} 關
+                第 {getLessonNumber(lessonState.currentLesson)} 關
               </Badge>
             </div>
             <h1 className="text-xl md:text-2xl font-bold mb-2">{currentLesson?.title}</h1>
             <p className="text-sm md:text-base text-gray-600">{currentLesson?.description}</p>
           </div>
 
-          <Tabs ref={tabsRef} defaultValue={lessonState.currentLesson === 5 ? 'game' : 'content'} className="mb-6 md:mb-8">
+          <Tabs ref={tabsRef} defaultValue={getLessonNumber(lessonState.currentLesson) === 5 ? 'game' : 'content'} className="mb-6 md:mb-8">
             <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${showTabs.length}, 1fr)` }}>
               {showTabs.includes('content') && (
                 <TabsTrigger value="content" className="text-sm md:text-base">課程內容</TabsTrigger>
@@ -770,7 +951,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                               height: '100%',
                               border: 'none'
                             }}
-                            src={lessonState.currentLesson === 5 
+                            src={getLessonNumber(lessonState.currentLesson) === 5 
                               ? "https://view.genially.com/67e2a183f77fd165cdb44648"
                               : "https://view.genially.com/67fb6e9177e4a8196ea4a50d"
                             }
@@ -818,76 +999,54 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     </div>
 
                     {/* 練習題目區塊 */}
-                    <div className="space-y-6">
-                      <div className="bg-gray-50 rounded-xl p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-[#2B4EFF] flex items-center justify-center flex-shrink-0">
-                            <FileSpreadsheet className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg mb-3">練習題目</h3>
-                            <p className="text-gray-700 mb-4">{currentLesson?.questions?.[0].description}</p>
-                            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
-                              <pre className="whitespace-pre-wrap font-mono text-sm text-gray-600">
-                        {currentLesson?.excelExample}
-                      </pre>
-                    </div>
-                          </div>
+                    <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-[#2B4EFF] flex items-center justify-center flex-shrink-0">
+                          <FileSpreadsheet className="h-5 w-5 text-white" />
                         </div>
-                      </div>
-
-                      {/* 答案輸入區塊 */}
-                      <div className="bg-gray-50 rounded-xl p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-[#58CC02] flex items-center justify-center flex-shrink-0">
-                            <MessageCircle className="h-5 w-5 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg mb-3">您的答案</h3>
-                            <div className="space-y-4">
-                        <input
-                          type="text"
-                          value={lessonState.answer}
-                          onChange={handleAnswerChange}
-                                className="w-full p-4 border border-gray-200 rounded-xl text-lg focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent"
-                          placeholder="輸入您的答案..."
-                        />
-                              {lessonState.hasSubmitted && (
-                                <div className={`p-4 rounded-xl ${
-                                  lessonState.isCorrect 
-                                    ? 'bg-[#E5FFE1] text-[#58CC02]' 
-                                    : 'bg-[#FFE5E5] text-[#FF4B4B]'
-                                }`}>
-                                  <div className="flex items-center gap-2">
-                                    {lessonState.isCorrect ? (
-                                      <>
-                                        <Star className="h-5 w-5 fill-current" />
-                                        <span className="font-medium">太棒了！答案正確！獲得 10 星星！</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <X className="h-5 w-5" />
-                                        <span className="font-medium">答案不正確，請重試。</span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                        <Button 
-                                onClick={lessonState.isCorrect ? handleContinue : handleAnswerSubmit}
-                                className={`w-full py-4 text-lg font-semibold rounded-xl transition-transform hover:scale-105 ${
-                                  lessonState.hasSubmitted && lessonState.isCorrect
-                                    ? 'bg-[#58CC02] hover:bg-[#46a001]'
-                                    : 'bg-[#2B4EFF] hover:bg-blue-700'
-                                } text-white`}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg mb-3">練習題目</h3>
+                          {exercisesData.length > 0 ? (
+                            <div className="prose prose-sm max-w-none">
+                              <ReactMarkdown 
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  table: ({ children }) => (
+                                    <div className="overflow-x-auto my-4">
+                                      <table className="min-w-full border-collapse border border-gray-300">
+                                        {children}
+                                      </table>
+                                    </div>
+                                  ),
+                                  th: ({ children }) => (
+                                    <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left">
+                                      {children}
+                                    </th>
+                                  ),
+                                  td: ({ children }) => (
+                                    <td className="border border-gray-300 px-4 py-2 bg-white">
+                                      {children}
+                                    </td>
+                                  ),
+                                  p: ({ children }) => (
+                                    <p className="mb-4 last:mb-0 whitespace-pre-wrap">
+                                      {children}
+                                    </p>
+                                  )
+                                }}
                               >
-                                {lessonState.hasSubmitted && lessonState.isCorrect ? '繼續' : '檢查答案'}
-                        </Button>
-                      </div>
-                          </div>
+                                {formatExerciseContent(exercisesData[0].question)}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (
+                            <p className="text-gray-700 mb-4">請完成遊戲後，輸入最終答案。</p>
+                          )}
                         </div>
                       </div>
                     </div>
+
+                    {/* 答案輸入區塊 */}
+                    {renderQuestion()}
                   </div>
                 </Card>
               </TabsContent>
@@ -896,7 +1055,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             <TabsContent 
               value="game" 
               forceMount
-              className={lessonState.currentLesson === 5 ? 'block' : 'hidden'}
+              className={getLessonNumber(lessonState.currentLesson) === 5 ? 'block' : 'hidden'}
             >
               <Card className="bg-white rounded-2xl shadow-sm border border-gray-100">
                 <div className="bg-gray-900 text-white p-4 rounded-t-2xl">
@@ -964,7 +1123,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                               height: '100%',
                               border: 'none'
                             }}
-                            src={lessonState.currentLesson === 5 
+                            src={getLessonNumber(lessonState.currentLesson) === 5 
                               ? "https://view.genially.com/67e2a183f77fd165cdb44648"
                               : "https://view.genially.com/67fb6e9177e4a8196ea4a50d"
                             }
@@ -975,56 +1134,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     </div>
 
                     {/* 答案輸入區塊 */}
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-[#58CC02] flex items-center justify-center flex-shrink-0">
-                          <MessageCircle className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg mb-3">您的答案</h3>
-                          <div className="space-y-4">
-                        <input
-                          type="text"
-                          value={lessonState.answer}
-                          onChange={handleAnswerChange}
-                              className="w-full p-4 border border-gray-200 rounded-xl text-lg focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent"
-                          placeholder="輸入最終答案..."
-                        />
-                            {lessonState.hasSubmitted && (
-                              <div className={`p-4 rounded-xl ${
-                                lessonState.isCorrect 
-                                  ? 'bg-[#E5FFE1] text-[#58CC02]' 
-                                  : 'bg-[#FFE5E5] text-[#FF4B4B]'
-                              }`}>
-                                <div className="flex items-center gap-2">
-                                  {lessonState.isCorrect ? (
-                                    <>
-                                      <Star className="h-5 w-5 fill-current" />
-                                      <span className="font-medium">恭喜您完成所有課程！獲得 10 星星！</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <X className="h-5 w-5" />
-                                      <span className="font-medium">答案不正確，請重試。</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                        <Button 
-                              onClick={lessonState.isCorrect ? handleContinue : handleAnswerSubmit}
-                              className={`w-full py-4 text-lg font-semibold rounded-xl transition-transform hover:scale-105 ${
-                                lessonState.hasSubmitted && lessonState.isCorrect
-                                  ? 'bg-[#58CC02] hover:bg-[#46a001]'
-                                  : 'bg-[#2B4EFF] hover:bg-blue-700'
-                              } text-white`}
-                            >
-                              {lessonState.hasSubmitted && lessonState.isCorrect ? '繼續' : '檢查答案'}
-                        </Button>
-                      </div>
-                        </div>
-                      </div>
-                    </div>
+                    {renderFinalQuestion()}
                   </div>
                 </div>
               </Card>
@@ -1033,7 +1143,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
           <div className="flex justify-between items-center">
             <div>
-              {lessonState.currentLesson === 1 ? (
+              {getLessonNumber(lessonState.currentLesson) === 1 ? (
                 <Link href="/">
                   <Button 
                     variant="outline" 
@@ -1055,7 +1165,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               )}
             </div>
             <div className="flex-1">
-              {lessonState.currentLesson !== 5 && (
+              {getLessonNumber(lessonState.currentLesson) !== 5 && (
                 <Button 
                   className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 ml-auto text-sm md:text-base"
                   onClick={handleNextLesson}

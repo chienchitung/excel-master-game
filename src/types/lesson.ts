@@ -3,13 +3,15 @@ export interface Question {
   description: string;
   answer: string;
   hint?: string;
+  explanation?: string;
 }
 
 export interface Lesson {
-  id: number;
+  lesson_id: string;
   title: string;
   description: string;
   content: string;
+  number: number;
   excelExample?: string;
   duration?: string;
   xpPoints?: number;
@@ -20,18 +22,18 @@ export interface Lesson {
 }
 
 export interface LessonProgress {
-  currentLesson: number;
+  currentLesson: string;
   completed: boolean;
   stars: number;
-  completedLessons: number[];
+  completedLessons: string[];
   finalAnswer?: string;
 }
 
 export interface UserProgress {
-  currentLesson: number;
+  currentLesson: string;
   completed: boolean;
   stars: number;
-  completedLessons: number[];
+  completedLessons: string[];
   finalAnswer?: string;
   lastUpdated?: Date;
   totalXP?: number;
@@ -49,10 +51,10 @@ export interface ChatMessage {
 }
 
 export interface State {
-  currentLesson: number;
+  currentLesson: string;
   completed: boolean;
   stars: number;
-  completedLessons: number[];
+  completedLessons: string[];
   answer: string;
   hasSubmitted: boolean;
   isCorrect: boolean;

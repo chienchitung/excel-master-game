@@ -9,7 +9,7 @@ export interface LearningRecord {
   id?: number
   student_id: string
   student_name: string
-  lesson_id: number
+  lesson_id: string | number
   started_at: string
   completed_at: string
   time_spent_seconds: number
@@ -32,6 +32,17 @@ export interface LeaderboardStats {
   fastest_time: string;
   average_time: string;
   rankings: { student_id: string, student_name: string, completion_time_string: string, rank: number }[];
+}
+
+export interface LessonOrderMapping {
+  id: string;
+  created_at: string;
+  user_id: string;
+  game_id: string;
+  mapping: {
+    number: number;
+    lesson_id: string;
+  }[];
 }
 
 export async function saveLearningRecord(record: Omit<LearningRecord, 'id'>) {
@@ -92,6 +103,11 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   return data || []
 }
 
+interface ScoreRecord {
+  student_id: string;
+  completion_time_seconds: number;
+}
+
 export async function getPlayerRank(student_id: string): Promise<number> {
   // 獲取所有用戶的最佳成績
   const { data: allScores, error: scoresError } = await supabase
@@ -108,22 +124,29 @@ export async function getPlayerRank(student_id: string): Promise<number> {
 
   // 獲取每個用戶的最佳成績
   const bestScores = Array.from(
-    allScores.reduce((map, score) => {
+    (allScores as ScoreRecord[]).reduce((map: Map<string, ScoreRecord>, score: ScoreRecord) => {
       if (!map.has(score.student_id) || 
           map.get(score.student_id)!.completion_time_seconds > score.completion_time_seconds) {
         map.set(score.student_id, score);
       }
       return map;
-    }, new Map())
-  ).map(([_, score]) => score);
+    }, new Map<string, ScoreRecord>())
+  ).map(([_, score]: [string, ScoreRecord]) => score);
 
   // 按完成時間排序
-  bestScores.sort((a, b) => a.completion_time_seconds - b.completion_time_seconds);
+  bestScores.sort((a: ScoreRecord, b: ScoreRecord) => a.completion_time_seconds - b.completion_time_seconds);
 
   // 找到當前用戶的排名
-  const rank = bestScores.findIndex(score => score.student_id === student_id) + 1;
+  const rank = bestScores.findIndex((score: ScoreRecord) => score.student_id === student_id) + 1;
   
   return rank || bestScores.length + 1; // 如果沒有找到，返回最後一名
+}
+
+interface LeaderboardRecord {
+  student_id: string;
+  student_name: string;
+  completion_time_seconds: number;
+  completion_time_string: string;
 }
 
 export async function getLeaderboardStats(): Promise<LeaderboardStats> {
@@ -148,17 +171,17 @@ export async function getLeaderboardStats(): Promise<LeaderboardStats> {
   }
 
   // 計算不重複用戶數
-  const uniqueUsers = new Set(data.map(record => record.student_id));
+  const uniqueUsers = new Set((data as LeaderboardRecord[]).map((record: LeaderboardRecord) => record.student_id));
   const totalParticipants = uniqueUsers.size;
 
   // 獲取每個用戶的最佳成績
   const bestScores = Array.from(uniqueUsers).map(userId => {
-    return data
-      .filter(record => record.student_id === userId)
-      .reduce((best, current) => 
+    return (data as LeaderboardRecord[])
+      .filter((record: LeaderboardRecord) => record.student_id === userId)
+      .reduce((best: LeaderboardRecord, current: LeaderboardRecord) => 
         best.completion_time_seconds < current.completion_time_seconds ? best : current
       );
-  }).sort((a, b) => a.completion_time_seconds - b.completion_time_seconds);
+  }).sort((a: LeaderboardRecord, b: LeaderboardRecord) => a.completion_time_seconds - b.completion_time_seconds);
 
   const fastestTime = bestScores[0].completion_time_string;
   const averageSeconds = Math.floor(
@@ -182,4 +205,57 @@ export async function getLeaderboardStats(): Promise<LeaderboardStats> {
     average_time: averageTime,
     rankings
   };
+}
+
+export async function getLessonOrderMappings(): Promise<LessonOrderMapping[]> {
+  try {
+    const { data, error } = await supabase
+      .from('lesson_order_mappings')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error('Error fetching lesson order mappings:', error);
+      throw error;
+    }
+
+    // Ensure each mapping has the correct structure
+    if (data && data.length > 0) {
+      // Make sure mapping is parsed as an array
+      const parsedData = data.map(item => {
+        let mapping = item.mapping;
+        
+        // If mapping is a string, parse it
+        if (typeof mapping === 'string') {
+          try {
+            mapping = JSON.parse(mapping);
+          } catch (e) {
+            console.error('Error parsing mapping JSON:', e);
+            mapping = [];
+          }
+        }
+        
+        // Ensure number is a number type
+        const validMapping = Array.isArray(mapping) 
+          ? mapping.map(m => ({
+              number: typeof m.number === 'string' ? parseInt(m.number, 10) : m.number,
+              lesson_id: m.lesson_id
+            }))
+          : [];
+        
+        return {
+          ...item,
+          mapping: validMapping
+        };
+      });
+      
+      return parsedData;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getLessonOrderMappings:', error);
+    return [];
+  }
 } 

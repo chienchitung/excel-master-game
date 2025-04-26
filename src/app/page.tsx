@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { FileSpreadsheet, Star, Flame, Trophy, RotateCcw, ChevronRight } from "lucide-react"
+import { FileSpreadsheet, Star, Flame, Trophy, RotateCcw, ChevronRight, Lock } from "lucide-react"
 import { lessons } from '@/data/lessons'
 import { getProgress, resetProgress } from '@/lib/progress'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
-import { getLeaderboardStats, getPlayerRank } from '@/lib/supabase'
+import { getLeaderboardStats, getPlayerRank, getLessonOrderMappings } from '@/lib/supabase'
+import { UserProgress, Lesson } from '@/types/lesson'
 
 interface ProgressData {
-  completedLessons: number[];
+  completedLessons: string[];
   stars: number;
   streak: number;
   level: number;
@@ -51,28 +52,103 @@ export default function HomePage() {
   });
   const router = useRouter();
 
-  useEffect(() => {
-    const savedProgress = getProgress();
-    const savedStudentId = localStorage.getItem('student_id');
-    const savedCompletionTime = localStorage.getItem('completion_time');
-    
-    setProgress(prev => ({
-      ...prev,
-      ...savedProgress,
-    }));
-    setHasStudentId(!!savedStudentId);
-    setCompletionTime(savedCompletionTime);
+  const [lessonMappings, setLessonMappings] = useState<{[key: string]: number}>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-    // 如果有學號且完成時間，獲取排名
-    if (savedStudentId && savedCompletionTime) {
-      getPlayerRank(savedStudentId)
-        .then(rank => {
-          setPlayerRank(rank);
-        })
-        .catch(error => {
-          console.error('Failed to fetch player rank:', error);
-        });
-    }
+  // Add state for mapped lessons
+  const [mappedLessons, setMappedLessons] = useState<Lesson[]>(lessons);
+  
+  useEffect(() => {
+    const fetchProgressAndMappings = async () => {
+      try {
+        // Fetch lesson order mappings
+        const mappingsData = await getLessonOrderMappings();
+        
+        if (mappingsData.length > 0 && mappingsData[0].mapping && mappingsData[0].mapping.length > 0) {
+          console.log('Got lesson mappings:', mappingsData[0].mapping);
+          
+          // Create mappings in both directions
+          const numberToLessonId: {[key: number]: string} = {};
+          const lessonIdToNumber: {[key: string]: number} = {};
+          
+          // Process the mapping data
+          mappingsData[0].mapping.forEach(item => {
+            if (item.number && item.lesson_id) {
+              numberToLessonId[item.number] = item.lesson_id;
+              lessonIdToNumber[item.lesson_id] = item.number;
+            }
+          });
+          
+          // Sort the mappings by number
+          const mappingsByNumber = [...mappingsData[0].mapping].sort((a, b) => a.number - b.number);
+          
+          // Map the lessons using the number property
+          const mappedLessonsData = lessons.map(lesson => {
+            // Find if there's a mapping for this lesson number
+            const mappedLessonId = numberToLessonId[lesson.number];
+            
+            // If there's a mapping, use the mapped lesson_id
+            return mappedLessonId 
+              ? { ...lesson, lesson_id: mappedLessonId } 
+              : lesson;
+          });
+          
+          // Ensure they're sorted by number
+          mappedLessonsData.sort((a, b) => a.number - b.number);
+          
+          console.log('Mapped lessons:', mappedLessonsData);
+          
+          setMappedLessons(mappedLessonsData);
+          setLessonMappings(lessonIdToNumber);
+        } else {
+          console.log('No lesson mappings found, using default lessons');
+          // If no mapping found, use lessons as is but ensure they're sorted
+          setMappedLessons([...lessons].sort((a, b) => a.number - b.number));
+        }
+        
+        // Fetch progress
+        const savedProgress = getProgress();
+        const savedStudentId = localStorage.getItem('student_id');
+        const savedCompletionTime = localStorage.getItem('completion_time');
+        
+        console.log('Current progress:', savedProgress);
+        
+        setProgress(prev => ({
+          ...prev,
+          ...savedProgress,
+        }));
+        setHasStudentId(!!savedStudentId);
+        setCompletionTime(savedCompletionTime);
+
+        // 如果有學號且完成時間，獲取排名
+        if (savedStudentId && savedCompletionTime) {
+          getPlayerRank(savedStudentId)
+            .then(rank => {
+              setPlayerRank(rank);
+            })
+            .catch(error => {
+              console.error('Failed to fetch player rank:', error);
+            });
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProgressAndMappings();
+    
+    // Set up a listener for localStorage changes from other tabs/windows
+    const handleStorageChange = () => {
+      fetchProgressAndMappings();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
   
   useEffect(() => {
@@ -99,11 +175,16 @@ export default function HomePage() {
     localStorage.removeItem('completion_time_seconds');
     
     // 重置進度
-    const newProgress = resetProgress();
-    setProgress(prev => ({
-      ...prev,
-      ...newProgress,
-    }));
+    resetProgress();
+    setProgress({
+      completedLessons: [],
+      stars: 0,
+      streak: 1,
+      level: 1,
+      exp: 0,
+      dailyGoal: 100,
+      dailyProgress: 0
+    });
     
     // 重置學號狀態
     setHasStudentId(false);
@@ -115,7 +196,8 @@ export default function HomePage() {
 
   const handleStartLearning = () => {
     if (hasStudentId) {
-      router.push(`/lessons/${nextLessonId}`);
+      const currentLessonId = getNextIncompleteLesson();
+      router.push(`/lessons/${currentLessonId}`);
     } else {
       setShowStudentIdDialog(true);
     }
@@ -136,6 +218,44 @@ export default function HomePage() {
       router.push('/lessons/1');
     }
   };
+
+  // Helper to determine the next incomplete lesson or current progress
+  const getNextIncompleteLesson = () => {
+    // If there are completed lessons, return the next one
+    if (progress.completedLessons.length > 0 && progress.completedLessons.length < mappedLessons.length) {
+      // Find the next lesson ID that hasn't been completed yet
+      for (let i = 0; i < mappedLessons.length; i++) {
+        if (!progress.completedLessons.includes(mappedLessons[i].lesson_id)) {
+          return mappedLessons[i].lesson_id;
+        }
+      }
+    }
+    
+    // If all lessons are completed, return the last one
+    if (progress.completedLessons.length === mappedLessons.length) {
+      return mappedLessons[mappedLessons.length - 1].lesson_id;
+    }
+    
+    // If no lessons are completed, start with the first one
+    return mappedLessons[0].lesson_id;
+  };
+
+  // Update getLessonNumber function to use lesson's number property
+  const getLessonNumber = (lessonId: string): number => {
+    const lesson = mappedLessons.find(l => l.lesson_id === lessonId);
+    return lesson ? lesson.number : 0;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">載入中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -304,58 +424,83 @@ export default function HomePage() {
                   <div className="absolute top-0 left-5 w-0.5 h-full bg-gray-100" />
                   
                   <div className="space-y-4">
-                    {lessons.map((lesson) => {
-                      const isCompleted = progress.completedLessons.includes(lesson.id);
-                      const isNext = !isCompleted && lesson.id === nextLessonId;
-                      const isLocked = !hasStudentId;
+                    {mappedLessons.map((lesson, index) => {
+                      const isCompleted = progress.completedLessons.includes(lesson.lesson_id);
+                      const isLocked = !hasStudentId || (index > 0 && !progress.completedLessons.includes(mappedLessons[index - 1].lesson_id));
 
                       return (
-                        <Link
-                          key={lesson.id}
-                          href={isLocked ? '#' : `/lessons/${lesson.id}`}
-                          className={`block ${isLocked ? 'cursor-not-allowed' : ''}`}
-                        >
-                          <div className={`
-                            relative p-4 rounded-xl transition-all duration-200
-                            ${isCompleted 
-                              ? 'bg-[#E5FFE1] border border-[#58CC02]' 
-                              : isNext && hasStudentId 
-                                ? 'bg-[#F5F7FF] border border-[#2B4EFF]'
-                                : 'bg-gray-50 border border-gray-200'
-                            }
-                            ${!isLocked && 'hover:transform hover:translate-y-[-2px] hover:shadow-md'}
-                          `}>
-                            <div className="flex items-center gap-4">
+                        <div key={lesson.lesson_id} className="relative">
+                          {index > 0 && (
+                            <div className={`absolute left-[30px] -top-[50px] h-[70px] w-[2px] ${
+                              isCompleted ? 'bg-[#1CB0F6]' : 'bg-gray-200'
+                            }`} />
+                          )}
+                          
+                          <div className="relative mb-10">
+                            <Link 
+                              href={isLocked ? "#" : `/lessons/${lesson.lesson_id}`}
+                              className={`
+                                block relative no-underline
+                                ${isLocked ? 'cursor-not-allowed opacity-60' : ''}
+                              `}
+                              onClick={(e) => isLocked && e.preventDefault()}
+                            >
                               <div className={`
-                                relative z-10 w-10 h-10 rounded-full flex items-center justify-center
-                                ${isCompleted 
-                                  ? 'bg-[#58CC02]' 
-                                  : isNext && hasStudentId 
-                                    ? 'bg-[#2B4EFF]'
-                                    : 'bg-gray-300'
-                                }
-                                text-white font-bold
+                                bg-white rounded-xl shadow-sm border 
+                                ${isCompleted ? 'border-[#1CB0F6]' : 'border-gray-100'} 
+                                transition-transform hover:scale-[1.01] hover:shadow-md
                               `}>
-                                {lesson.id}
-                              </div>
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-gray-900">{lesson.title}</h3>
-                                <p className="text-sm text-gray-600">{lesson.description}</p>
-                              </div>
-                              {isCompleted ? (
-                                <div className="flex items-center gap-2">
-                                  <Star className="h-5 w-5 text-[#FF9900] fill-[#FF9900]" />
-                                  <span className="font-medium">10</span>
+                                <div className="p-4 sm:p-6">
+                                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                                    <div className={`
+                                      w-[60px] h-[60px] rounded-full flex items-center justify-center 
+                                      ${isCompleted 
+                                        ? 'bg-[#1CB0F6] text-white' 
+                                        : 'bg-gray-100 text-gray-500'}
+                                      `}
+                                    >
+                                      <span className="text-2xl font-bold">{lesson.number}</span>
+                                    </div>
+                                    <div className="flex-1">
+                                      <h2 className="text-lg font-semibold text-gray-900">{lesson.title}</h2>
+                                      <p className="text-sm text-gray-600 mt-1">{lesson.description}</p>
+                                    </div>
+                                    <div>
+                                      <div className={`
+                                        px-3 py-2 rounded-lg flex items-center gap-1
+                                        ${isLocked 
+                                          ? 'bg-gray-100 text-gray-400' 
+                                          : isCompleted
+                                            ? 'bg-[#58CC02] text-white'
+                                            : 'bg-[#2B4EFF] text-white'}
+                                      `}>
+                                        {isCompleted ? (
+                                          <>
+                                            <Star className="h-4 w-4 fill-current" />
+                                            <span className="text-sm font-medium">10</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="text-sm font-medium">開始挑戰</span>
+                                            <ChevronRight className="h-4 w-4" />
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                              ) : hasStudentId ? (
-                                <div className="flex items-center gap-2 text-[#2B4EFF]">
-                                  <span className="text-sm font-medium">開始挑戰</span>
-                                  <ChevronRight className="h-4 w-4" />
+                              </div>
+                            </Link>
+                            
+                            {isLocked && (
+                              <div className="absolute top-[24px] right-[24px]">
+                                <div className="bg-gray-100 p-2 rounded-full">
+                                  <Lock className="h-5 w-5 text-gray-500" />
                                 </div>
-                              ) : null}
-                            </div>
+                              </div>
+                            )}
                           </div>
-                        </Link>
+                        </div>
                       );
                     })}
                   </div>

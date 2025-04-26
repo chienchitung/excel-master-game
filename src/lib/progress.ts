@@ -23,19 +23,19 @@ export function getInitialProgress(): UserProgress {
     level: 1,
     exp: 0,
     dailyProgress: 0,
-    currentLesson: 1,
+    currentLesson: "a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c",
     completed: false
   }
 }
 
-export function resetProgress(): UserProgress {
-  const initialProgress = getInitialProgress()
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(initialProgress))
-  return initialProgress
+export function resetProgress() {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(getInitialProgress()))
+  }
 }
 
 export function updateLessonProgress(
-  lessonId: number,
+  lessonId: string,
   starsEarned: number,
   expEarned: number
 ): UserProgress {
