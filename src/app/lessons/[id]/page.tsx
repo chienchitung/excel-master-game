@@ -367,6 +367,117 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     return lessons.find(lesson => lesson.number === currentNumber - 1)?.lesson_id || null;
   };
 
+  // Define the function outside useEffect to fix the strict mode error
+  const fetchExercisesAndProgress = async (currentLessonId: string) => {
+    try {
+      // 每次加載課程時都重置答案嘗試次數為0
+      setAnswerAttempts(0);
+      
+      // Fetch exercises
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('practice_exercises')
+        .eq('id', currentLessonId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching exercises:', error.message || error);
+        return;
+      }
+      
+      if (data && data.practice_exercises) {
+        const parsedExercises = JSON.parse(data.practice_exercises);
+        setExercisesData(parsedExercises);
+      }
+
+      // Get progress
+      const progress = getProgress();
+      const isLessonCompleted = progress.completedLessons.includes(currentLessonId);
+      
+      // 記錄關卡開始時間
+      if (!isLessonCompleted) {
+        const now = new Date();
+        const lessonStartTime = new Date(now.toISOString());
+        localStorage.setItem(`lesson_${currentLessonId}_start_time`, lessonStartTime.toISOString());
+        
+        // For level 1, always set a global start time for the entire game if not already set
+        if (getLessonNumber(currentLessonId) === 1 && !localStorage.getItem('start_time')) {
+          localStorage.setItem('start_time', lessonStartTime.toISOString());
+          console.log('Setting global start_time from lesson 1:', lessonStartTime.toISOString());
+        }
+        
+        // For level 5, ensure a global start time exists
+        if (getLessonNumber(currentLessonId) === 5) {
+          // If no global start time exists, try to use lesson 1's start time
+          if (!localStorage.getItem('start_time')) {
+            const lesson1StartTime = localStorage.getItem('lesson_1_start_time');
+            if (lesson1StartTime) {
+              localStorage.setItem('start_time', lesson1StartTime);
+              console.log('Setting global start_time from lesson 1:', lesson1StartTime);
+            } else {
+              // Fallback to current time if no lesson 1 start time
+              const currentTime = new Date();
+              const newGlobalStartTime = new Date(currentTime.toISOString())
+                .toISOString();
+              localStorage.setItem('start_time', newGlobalStartTime);
+              console.log('Setting default global start_time:', newGlobalStartTime);
+            }
+          }
+        }
+      }
+      
+      // Set current lesson state based on progress
+      setLessonState(prev => ({
+        ...prev,
+        currentLesson: currentLessonId,
+        stars: progress.stars,
+        completedLessons: progress.completedLessons,
+        hasSubmitted: isLessonCompleted,
+        isCorrect: isLessonCompleted,
+        answer: isLessonCompleted ? (prev.answer || "") : "",
+        exp: progress.exp,
+        level: progress.level,
+        dailyProgress: progress.dailyProgress,
+        streak: progress.streak || 1
+      }));
+
+      // If lesson was already completed, get the explanation
+      if (isLessonCompleted && exercisesData.length > 0) {
+        setCurrentExplanation(exercisesData[0].explanation || '');
+      }
+
+      // 讀取完成時間和排行榜統計
+      if (showRewardDialog) {
+        const savedTime = localStorage.getItem('completion_time');
+        if (savedTime) {
+          setCompletionTime(savedTime);
+        }
+
+        // 獲取玩家排名
+        const studentId = localStorage.getItem('student_id') || 'guest';
+        getPlayerRank(studentId)
+          .then(rank => {
+            setPlayerRank(rank);
+          })
+          .catch(error => {
+            console.error('Failed to fetch player rank:', error);
+          });
+
+        // 獲取排行榜統計數據
+        getLeaderboardStats()
+          .then(stats => {
+            setLeaderboardStats(stats);
+          })
+          .catch(error => {
+            console.error('Failed to fetch leaderboard stats:', error);
+          });
+      }
+
+    } catch (error) {
+      console.error('Error in fetchExercisesAndProgress:', error instanceof Error ? error.message : JSON.stringify(error));
+    }
+  };
+
   useEffect(() => {
     // Initialize student ID and name if not already set
     if (!localStorage.getItem('student_id')) {
@@ -378,133 +489,12 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       localStorage.setItem('student_name', 'Anonymous User');
     }
     
-    const fetchExercisesAndProgress = async () => {
-      try {
-        // 獲取當前課程 ID
-        const currentLessonId = resolvedParams.id;
-        
-        // 從 localStorage 中獲取答案嘗試次數
-        const attemptsKey = `lesson_${currentLessonId}_attempts`;
-        const savedAttempts = localStorage.getItem(attemptsKey);
-        
-        // 僅在以下情況重置答案嘗試次數：
-        // 1. 初次訪問這個課程(沒有保存的嘗試次數)
-        // 2. 用戶已經完成課程(有可能是新的學習會話)
-        const isLessonCompletedInProgress = getProgress().completedLessons.includes(currentLessonId);
-        
-        if (!savedAttempts || isLessonCompletedInProgress) {
-          setAnswerAttempts(0);
-          localStorage.setItem(attemptsKey, '0');
-        } else {
-          setAnswerAttempts(parseInt(savedAttempts));
-        }
-        
-        // Fetch exercises
-        const { data, error } = await supabase
-          .from('lessons')
-          .select('practice_exercises')
-          .eq('id', currentLessonId)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching exercises:', error.message || error);
-          return;
-        }
-        
-        if (data && data.practice_exercises) {
-          const parsedExercises = JSON.parse(data.practice_exercises);
-          setExercisesData(parsedExercises);
-        }
-
-        // Get progress
-        const progress = getProgress();
-        const isLessonCompleted = progress.completedLessons.includes(currentLessonId);
-        
-        // 記錄關卡開始時間
-        if (!isLessonCompleted) {
-          const now = new Date();
-          const lessonStartTime = new Date(now.toISOString());
-          localStorage.setItem(`lesson_${currentLessonId}_start_time`, lessonStartTime.toISOString());
-          
-          // For level 1, always set a global start time for the entire game if not already set
-          if (getLessonNumber(currentLessonId) === 1 && !localStorage.getItem('start_time')) {
-            localStorage.setItem('start_time', lessonStartTime.toISOString());
-            console.log('Setting global start_time from lesson 1:', lessonStartTime.toISOString());
-          }
-          
-          // For level 5, ensure a global start time exists
-          if (getLessonNumber(currentLessonId) === 5) {
-            // If no global start time exists, try to use lesson 1's start time
-            if (!localStorage.getItem('start_time')) {
-              const lesson1StartTime = localStorage.getItem('lesson_1_start_time');
-              if (lesson1StartTime) {
-                localStorage.setItem('start_time', lesson1StartTime);
-                console.log('Setting global start_time from lesson 1:', lesson1StartTime);
-              } else {
-                // Fallback to current time if no lesson 1 start time
-                const currentTime = new Date();
-                const newGlobalStartTime = new Date(currentTime.toISOString())
-                  .toISOString();
-                localStorage.setItem('start_time', newGlobalStartTime);
-                console.log('Setting default global start_time:', newGlobalStartTime);
-              }
-            }
-          }
-        }
-        
-        // Set current lesson state based on progress
-        setLessonState(prev => ({
-          ...prev,
-          currentLesson: currentLessonId,
-          stars: progress.stars,
-          completedLessons: progress.completedLessons,
-          hasSubmitted: isLessonCompleted,
-          isCorrect: isLessonCompleted,
-          answer: isLessonCompleted ? (prev.answer || "") : "",
-          exp: progress.exp,
-          level: progress.level,
-          dailyProgress: progress.dailyProgress,
-          streak: progress.streak || 1
-        }));
-
-        // If lesson was already completed, get the explanation
-        if (isLessonCompleted && exercisesData.length > 0) {
-          setCurrentExplanation(exercisesData[0].explanation || '');
-        }
-
-        // 讀取完成時間和排行榜統計
-        if (showRewardDialog) {
-          const savedTime = localStorage.getItem('completion_time');
-          if (savedTime) {
-            setCompletionTime(savedTime);
-          }
-
-          // 獲取玩家排名
-          const studentId = localStorage.getItem('student_id') || 'guest';
-          getPlayerRank(studentId)
-            .then(rank => {
-              setPlayerRank(rank);
-            })
-            .catch(error => {
-              console.error('Failed to fetch player rank:', error);
-            });
-
-          // 獲取排行榜統計數據
-          getLeaderboardStats()
-            .then(stats => {
-              setLeaderboardStats(stats);
-            })
-            .catch(error => {
-              console.error('Failed to fetch leaderboard stats:', error);
-            });
-        }
-
-      } catch (error) {
-        console.error('Error in fetchExercisesAndProgress:', error instanceof Error ? error.message : JSON.stringify(error));
-      }
-    };
+    // 獲取當前課程 ID
+    const currentLessonId = resolvedParams.id;
     
-    fetchExercisesAndProgress();
+    // Call the fetchExercisesAndProgress function
+    fetchExercisesAndProgress(currentLessonId);
+    
   }, [resolvedParams.id, showRewardDialog, exercisesData.length]);
 
   // Add an extra effect to update explanation when exercises data changes
@@ -592,12 +582,9 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     console.log('User answer:', userAnswer);
     console.log('Correct answer:', correctAnswer);
     
-    // 增加答案提交次數並保存到 localStorage
+    // 增加答案提交次數，僅在當前會話中計算
     const newAttemptCount = answerAttempts + 1;
     setAnswerAttempts(newAttemptCount);
-    
-    const attemptsKey = `lesson_${lessonState.currentLesson}_attempts`;
-    localStorage.setItem(attemptsKey, newAttemptCount.toString());
     
     // Set explanation if available and not in level 5
     if (getLessonNumber(lessonState.currentLesson) !== 5) {
@@ -670,7 +657,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
             completed_at: utc8Time.toISOString(),
             time_spent_seconds: timeSpentSeconds,
-            answer_attempts: answerAttempts // 添加答案嘗試次數
+            answer_attempts: newAttemptCount // 使用 newAttemptCount 代替 answerAttempts
           });
           
           // 如果成功儲存學習記錄，則儲存暫存的聊天資料
@@ -757,7 +744,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
           completed_at: utc8Time.toISOString(),
           time_spent_seconds: timeSpentSeconds,
-          answer_attempts: answerAttempts // 添加答案嘗試次數
+          answer_attempts: newAttemptCount // 使用 newAttemptCount 代替 answerAttempts
         });
         
         // Save learning record to Supabase
@@ -768,7 +755,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
           completed_at: utc8Time.toISOString(),
           time_spent_seconds: timeSpentSeconds,
-          answer_attempts: answerAttempts // 添加答案嘗試次數
+          answer_attempts: newAttemptCount // 使用 newAttemptCount 代替 answerAttempts
         });
         
         // 如果成功儲存學習記錄，則儲存暫存的聊天資料
@@ -1183,7 +1170,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       
       setShowRewardDialog(false);
       // 導向到問卷連結
-      window.location.href = 'https://www.surveycake.com/s/nApPl';
+      window.location.href = 'https://www.surveycake.com/s/QMkxK';
     }
   };
 
@@ -1259,6 +1246,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     ? 'bg-[#58CC02] hover:bg-[#46a001]'
                     : 'bg-[#2B4EFF] hover:bg-blue-700'
                 } text-white`}
+                disabled={!lessonState.isCorrect && !lessonState.answer.trim()}
               >
                 {lessonState.hasSubmitted && lessonState.isCorrect ? '繼續' : '檢查答案'}
               </Button>
