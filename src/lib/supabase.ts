@@ -14,6 +14,7 @@ export interface LearningRecord {
   started_at: string
   completed_at: string
   time_spent_seconds: number
+  answer_attempts: number
 }
 
 export interface LeaderboardEntry {

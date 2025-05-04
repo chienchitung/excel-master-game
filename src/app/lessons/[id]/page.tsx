@@ -325,6 +325,9 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // 追蹤"檢查答案"的嘗試次數
+  const [answerAttempts, setAnswerAttempts] = useState<number>(0);
+
   // 添加用於暫存對話記錄和提問次數的 state
   const [pendingChatMessages, setPendingChatMessages] = useState<Array<{
     content: string;
@@ -377,8 +380,26 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     
     const fetchExercisesAndProgress = async () => {
       try {
-        // Fetch exercises
+        // 獲取當前課程 ID
         const currentLessonId = resolvedParams.id;
+        
+        // 從 localStorage 中獲取答案嘗試次數
+        const attemptsKey = `lesson_${currentLessonId}_attempts`;
+        const savedAttempts = localStorage.getItem(attemptsKey);
+        
+        // 僅在以下情況重置答案嘗試次數：
+        // 1. 初次訪問這個課程(沒有保存的嘗試次數)
+        // 2. 用戶已經完成課程(有可能是新的學習會話)
+        const isLessonCompletedInProgress = getProgress().completedLessons.includes(currentLessonId);
+        
+        if (!savedAttempts || isLessonCompletedInProgress) {
+          setAnswerAttempts(0);
+          localStorage.setItem(attemptsKey, '0');
+        } else {
+          setAnswerAttempts(parseInt(savedAttempts));
+        }
+        
+        // Fetch exercises
         const { data, error } = await supabase
           .from('lessons')
           .select('practice_exercises')
@@ -571,6 +592,13 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     console.log('User answer:', userAnswer);
     console.log('Correct answer:', correctAnswer);
     
+    // 增加答案提交次數並保存到 localStorage
+    const newAttemptCount = answerAttempts + 1;
+    setAnswerAttempts(newAttemptCount);
+    
+    const attemptsKey = `lesson_${lessonState.currentLesson}_attempts`;
+    localStorage.setItem(attemptsKey, newAttemptCount.toString());
+    
     // Set explanation if available and not in level 5
     if (getLessonNumber(lessonState.currentLesson) !== 5) {
       const explanation = exercisesData[0].explanation || '';
@@ -641,7 +669,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 代替數字
             started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
             completed_at: utc8Time.toISOString(),
-            time_spent_seconds: timeSpentSeconds
+            time_spent_seconds: timeSpentSeconds,
+            answer_attempts: answerAttempts // 添加答案嘗試次數
           });
           
           // 如果成功儲存學習記錄，則儲存暫存的聊天資料
@@ -727,7 +756,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 而不是數字
           started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
           completed_at: utc8Time.toISOString(),
-          time_spent_seconds: timeSpentSeconds
+          time_spent_seconds: timeSpentSeconds,
+          answer_attempts: answerAttempts // 添加答案嘗試次數
         });
         
         // Save learning record to Supabase
@@ -737,7 +767,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 而不是數字
           started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
           completed_at: utc8Time.toISOString(),
-          time_spent_seconds: timeSpentSeconds
+          time_spent_seconds: timeSpentSeconds,
+          answer_attempts: answerAttempts // 添加答案嘗試次數
         });
         
         // 如果成功儲存學習記錄，則儲存暫存的聊天資料
