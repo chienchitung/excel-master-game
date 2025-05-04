@@ -48,6 +48,7 @@ export interface ChatMessage {
   content: string;
   isUser: boolean;
   timestamp: Date;
+  imageUrl?: string;
 }
 
 export interface State {

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, Pencil, CheckCircle, XCircle, KeyRound } from 'lucide-react'
+import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, Pencil, CheckCircle, XCircle, KeyRound, Image as ImageIcon } from 'lucide-react'
 import { lessons } from '@/data/lessons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -63,7 +63,7 @@ const formatDataContent = (content: string) => {
   return content;
 };
 
-const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) => {
+const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: boolean; imageUrl?: string }) => {
   const [isTyping, setIsTyping] = useState(!isUser);
   const [displayedMessage, setDisplayedMessage] = useState('');
   const [isVisible, setIsVisible] = useState(false);
@@ -120,42 +120,56 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
               ) : (
                 <div className="chat-bubble bot transition-all duration-300 ease-out">
                   <div className="prose prose-base max-w-none dark:prose-invert markdown-content text-sm md:text-base [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                    <ReactMarkdown 
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        table: ({ children }) => (
-                          <div className="overflow-x-auto my-4">
-                            <table className="min-w-full border-collapse border border-gray-300">
+                    {/* 如果有圖片，顯示圖片 */}
+                    {imageUrl && (
+                      <div className="mb-3">
+                        <img
+                          src={imageUrl}
+                          alt="Uploaded"
+                          className="max-w-full rounded-lg"
+                        />
+                      </div>
+                    )}
+                    {!displayedMessage.trim() && isUser ? (
+                      <span className="text-gray-300">圖片</span>
+                    ) : (
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          table: ({ children }) => (
+                            <div className="overflow-x-auto my-4">
+                              <table className="min-w-full border-collapse border border-gray-300">
+                                {children}
+                              </table>
+                            </div>
+                          ),
+                          th: ({ children }) => (
+                            <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left">
                               {children}
-                            </table>
-                          </div>
-                        ),
-                        th: ({ children }) => (
-                          <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left">
-                            {children}
-                          </th>
-                        ),
-                        td: ({ children }) => (
-                          <td className="border border-gray-300 px-4 py-2">
-                            {children}
-                          </td>
-                        ),
-                        p: ({ children }) => (
-                          <p className="mb-4 last:mb-0 whitespace-pre-wrap">
-                            {children}
-                          </p>
-                        ),
-                        code: ({ children, className, node, ...props }) => {
-                          const match = /language-(\w+)/.exec(className || '')
-                          const inline = !match
-                          return inline 
-                            ? <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
-                            : <code>{children}</code>
-                        }
-                      }}
-                    >
-                      {formatDataContent(displayedMessage)}
-                    </ReactMarkdown>
+                            </th>
+                          ),
+                          td: ({ children }) => (
+                            <td className="border border-gray-300 px-4 py-2">
+                              {children}
+                            </td>
+                          ),
+                          p: ({ children }) => (
+                            <p className="mb-4 last:mb-0 whitespace-pre-wrap">
+                              {children}
+                            </p>
+                          ),
+                          code: ({ children, className, node, ...props }) => {
+                            const match = /language-(\w+)/.exec(className || '')
+                            const inline = !match
+                            return inline 
+                              ? <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
+                              : <code>{children}</code>
+                          }
+                        }}
+                      >
+                        {displayedMessage}
+                      </ReactMarkdown>
+                    )}
                   </div>
                 </div>
               )}
@@ -164,7 +178,21 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
         )}
         {isUser && (
           <div className="chat-bubble user">
-            <span className="text-sm md:text-base whitespace-pre-wrap">{displayedMessage}</span>
+            {/* 如果用戶訊息有圖片，也顯示圖片 */}
+            {imageUrl && (
+              <div className="mb-2 max-w-xs md:max-w-sm">
+                <img
+                  src={imageUrl}
+                  alt="Uploaded"
+                  className="w-full rounded-lg object-contain"
+                />
+              </div>
+            )}
+            {displayedMessage.trim() ? (
+              <span className="text-sm md:text-base whitespace-pre-wrap">{displayedMessage}</span>
+            ) : imageUrl ? (
+              <span className="text-sm md:text-base text-gray-300 italic">圖片</span>
+            ) : null}
           </div>
         )}
       </div>
@@ -173,14 +201,23 @@ const ChatMessage = ({ message, isUser }: { message: string; isUser: boolean }) 
 };
 
 const getInitialMessage = () => {
-  return `您好，我是艾利斯，可以協助您學習 Excel！請問今天有什麼需要幫忙的呢？
+  return `# 您好，我是艾利斯，Excel學習助手！
 
-為了更好地協助您，建議您可以：
-1. 說明您想完成的任務
-2. 描述您目前使用的方法
-3. 提供遇到的具體問題
+我可以協助您學習Excel的各種功能和技巧。在這個平台上：
 
-讓我們開始學習吧！`;
+* 共有5個關卡，每個關卡專注於不同Excel技能
+* 完成練習可獲得星星和經驗值
+* 累積50顆星星可兌換特別獎勵
+* 您可以向我提問Excel相關問題
+* 可以向我上傳Excel截圖以獲得更精確的協助
+
+## 如何使用我的協助：
+
+1. **關於課程內容**：詢問關於當前課程的概念和技巧
+2. **關於練習題**：我可以提供循序漸進的引導和提示
+3. **Excel使用問題**：無論函數、公式或操作技巧
+
+請告訴我您需要什麼幫助？`;
 };
 
 // 定義聊天上下文介面
@@ -283,6 +320,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const [isExpanded, setIsExpanded] = useState(false);
   const [exercisesData, setExercisesData] = useState<Array<{question: string, answer: string, explanation: string}>>([]);
   const [currentExplanation, setCurrentExplanation] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 修改 getLessonNumber 函數使用 lesson_id
   const getLessonNumber = (lessonId: string): number => {
@@ -786,25 +825,65 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = async () => {
-    if (!chatInput.trim()) return;
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // 檢查檔案類型
+    if (!file.type.startsWith('image/')) {
+      alert('請上傳圖片檔案');
+      return;
+    }
+    
+    // 檢查檔案大小 (限制為 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('圖片大小不能超過 5MB');
+      return;
+    }
+    
+    // 將檔案轉為 Data URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+  
+  const handleCancelImage = () => {
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
+  const handleSendMessage = async () => {
+    const hasContent = chatInput.trim() || imagePreview;
+    if (!hasContent) return;
+    
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
-      content: chatInput,
+      content: chatInput.trim(),
       isUser: true,
-      timestamp: new Date()
+      timestamp: new Date(),
+      imageUrl: imagePreview || undefined
     };
-
+    
     setChatMessages(prev => [...prev, newMessage]);
     setChatInput('');
-
+    
     // 重置輸入框高度為固定值
     const textarea = document.querySelector('textarea');
     if (textarea) {
       textarea.style.height = '4rem';
     }
-
+    
+    // 保存圖片URL，然後清空圖片預覽
+    const currentImageUrl = imagePreview;
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
     try {
       // 立即添加一個空的機器人消息來顯示打字動畫
       const tempBotMessage: ChatMessage = {
@@ -814,27 +893,48 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         timestamp: new Date()
       };
       setChatMessages(prev => [...prev, tempBotMessage]);
-
+      
       // 確保滾動到底部
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
-
+      
       // 構建上下文訊息
       const contextMessages = chatMessages.slice(-4).map(msg => ({
         content: msg.content,
         isUser: msg.isUser
       }));
       
-      const lessonContext = `當前課程：第 ${getLessonNumber(lessonState.currentLesson)} 關 - ${currentLesson?.title}
+      // 增強課程上下文，加入完整課程內容和練習題信息
+      let lessonContext = `當前課程：第 ${getLessonNumber(lessonState.currentLesson)} 關 - ${currentLesson?.title}
 課程內容：${currentLesson?.description}`;
+
+      // 添加完整課程內容（如果有）
+      if (currentLesson?.content) {
+        // 移除HTML標籤以獲取純文本內容
+        const contentText = currentLesson.content.replace(/<[^>]*>?/gm, ' ').trim();
+        lessonContext += `\n\n完整課程內容：${contentText}`;
+      }
+
+      // 添加練習題信息（如果有）
+      if (exercisesData.length > 0) {
+        const currentExercise = exercisesData[0];
+        lessonContext += `\n\n當前練習題：${currentExercise.question}`;
+        
+        // 如果學生已提交答案，也提供正確答案和解釋
+        if (lessonState.hasSubmitted) {
+          lessonContext += `\n正確答案：${currentExercise.answer}`;
+          lessonContext += `\n解釋：${currentExercise.explanation}`;
+        }
+      }
 
       const chatContext: ChatContext = {
         context: contextMessages,
         lessonInfo: lessonContext
       };
       
-      const aiResponse = await getChatResponse(chatInput, chatContext);
+      // 使用更新後的 getChatResponse 函數，傳遞圖片
+      const aiResponse = await getChatResponse(chatInput, chatContext, currentImageUrl || undefined);
       
       // 更新機器人的實際回應
       setChatMessages(prev => [
@@ -846,12 +946,12 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           timestamp: new Date()
         }
       ]);
-
+      
       // 確保在回應後再次滾動到底部
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
-
+      
     } catch (error) {
       console.error('Error getting AI response:', error);
       
@@ -1474,6 +1574,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     key={message.id}
                     message={message.content}
                     isUser={message.isUser}
+                    imageUrl={message.imageUrl}
                   />
                 ))}
                 <div ref={chatEndRef} />
@@ -1481,7 +1582,43 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             </ScrollArea>
 
             <div className="p-6 border-t bg-white">
+              {/* 圖片預覽區域 */}
+              {imagePreview && (
+                <div className="max-w-3xl mx-auto mb-4 relative">
+                  <div className="border rounded-xl p-2 overflow-hidden">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="max-h-48 rounded mx-auto object-contain"
+                    />
+                    <button 
+                      onClick={handleCancelImage}
+                      className="absolute top-2 right-2 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-70"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-center gap-3 max-w-3xl mx-auto">
+                {/* 圖片上傳按鈕 */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  ref={fileInputRef}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label 
+                  htmlFor="image-upload"
+                  className="p-2.5 border rounded-xl cursor-pointer hover:bg-gray-50"
+                >
+                  <ImageIcon className="h-5 w-5 text-gray-500" />
+                </label>
+                
+                {/* 文字輸入框 */}
                 <textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
@@ -1495,9 +1632,39 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                       e.preventDefault();
                     }
                   }}
+                  onPaste={(e) => {
+                    const items = e.clipboardData?.items;
+                    if (items) {
+                      for (let i = 0; i < items.length; i++) {
+                        if (items[i].type.indexOf('image') !== -1) {
+                          const blob = items[i].getAsFile();
+                          if (blob) {
+                            // 檢查檔案大小
+                            if (blob.size > 5 * 1024 * 1024) {
+                              alert('圖片大小不能超過 5MB');
+                              return;
+                            }
+                            
+                            // 將檔案轉為 Data URL
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setImagePreview(reader.result as string);
+                            };
+                            reader.readAsDataURL(blob);
+                            
+                            // 防止將圖片內容粘貼為文本
+                            e.preventDefault();
+                            break;
+                          }
+                        }
+                      }
+                    }
+                  }}
                   placeholder="輸入您的問題..."
                   className="flex-1 px-4 py-3 border rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#2B4EFF] focus:border-transparent resize-none h-16"
                 />
+                
+                {/* 發送按鈕 */}
                 <Button 
                   onClick={handleSendMessage}
                   className="bg-[#2B4EFF] hover:bg-blue-700 text-white rounded-xl px-6 text-sm md:text-base"
