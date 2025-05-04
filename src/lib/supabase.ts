@@ -46,6 +46,24 @@ export interface LessonOrderMapping {
   }[];
 }
 
+export interface ChatMessageRecord {
+  id?: string;
+  learning_record_id: string;
+  student_id: string;
+  lesson_id: string;
+  message_content: string;
+  is_user: boolean;
+  timestamp: string;
+}
+
+export interface QuestionCountRecord {
+  id?: string;
+  learning_record_id: string;
+  student_id: string;
+  lesson_id: string;
+  question_count: number;
+}
+
 export async function saveLearningRecord(record: Omit<LearningRecord, 'id'>) {
   try {
     // Validate input data
@@ -290,5 +308,138 @@ export async function getLessonOrderMappings(): Promise<LessonOrderMapping[]> {
   } catch (error) {
     console.error('Error in getLessonOrderMappings:', error);
     return [];
+  }
+}
+
+// Function to save chat messages to Supabase
+export async function saveChatMessage(message: Omit<ChatMessageRecord, 'id'>) {
+  try {
+    // Validate input data
+    if (!message.learning_record_id || !message.student_id || !message.lesson_id || !message.message_content) {
+      throw new Error('Missing required fields for chat message');
+    }
+
+    // Generate a unique UUID for the ID field
+    const messageWithId = {
+      ...message,
+      id: uuidv4()
+    };
+
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert([messageWithId])
+      .select();
+
+    if (error) {
+      console.error('Error saving chat message:', error.message || JSON.stringify(error));
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in saveChatMessage:', error instanceof Error ? error.message : JSON.stringify(error));
+    // Don't throw to prevent breaking the chat flow
+    return null;
+  }
+}
+
+// Function to get or create a question count record
+export async function getOrCreateQuestionCount(record: Omit<QuestionCountRecord, 'id' | 'question_count'>): Promise<{ id: string, question_count: number } | null> {
+  try {
+    // First try to get existing record
+    const { data: existingData, error: getError } = await supabase
+      .from('question_counts')
+      .select('id, question_count')
+      .eq('learning_record_id', record.learning_record_id)
+      .eq('student_id', record.student_id)
+      .eq('lesson_id', record.lesson_id)
+      .single();
+
+    if (existingData) {
+      return {
+        id: existingData.id,
+        question_count: existingData.question_count
+      };
+    }
+
+    // If no record found, create a new one
+    const { data: newData, error: insertError } = await supabase
+      .from('question_counts')
+      .insert([{
+        ...record,
+        question_count: 0,
+        id: uuidv4()
+      }])
+      .select('id, question_count');
+
+    if (insertError) {
+      console.error('Error creating question count record:', insertError.message || JSON.stringify(insertError));
+      throw insertError;
+    }
+
+    return newData?.[0] ? { id: newData[0].id, question_count: newData[0].question_count } : null;
+  } catch (error) {
+    console.error('Error in getOrCreateQuestionCount:', error instanceof Error ? error.message : JSON.stringify(error));
+    return null;
+  }
+}
+
+// Function to increment the question count
+export async function incrementQuestionCount(id: string): Promise<number | null> {
+  try {
+    // Get current count
+    const { data: currentData, error: getError } = await supabase
+      .from('question_counts')
+      .select('question_count')
+      .eq('id', id)
+      .single();
+
+    if (getError) {
+      console.error('Error getting current question count:', getError.message || JSON.stringify(getError));
+      throw getError;
+    }
+
+    const currentCount = currentData?.question_count || 0;
+    const newCount = currentCount + 1;
+
+    // Update the count
+    const { data: updatedData, error: updateError } = await supabase
+      .from('question_counts')
+      .update({ question_count: newCount, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('question_count');
+
+    if (updateError) {
+      console.error('Error updating question count:', updateError.message || JSON.stringify(updateError));
+      throw updateError;
+    }
+
+    return updatedData?.[0]?.question_count || null;
+  } catch (error) {
+    console.error('Error in incrementQuestionCount:', error instanceof Error ? error.message : JSON.stringify(error));
+    return null;
+  }
+}
+
+// Function to get learning record ID for a student and lesson
+export async function getLearningRecordId(studentId: string, lessonId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('learning_records')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('lesson_id', lessonId)
+      .order('completed_at', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error('Error getting learning record ID:', error.message || JSON.stringify(error));
+      throw error;
+    }
+
+    return data && data.length > 0 ? data[0].id : null;
+  } catch (error) {
+    console.error('Error in getLearningRecordId:', error instanceof Error ? error.message : JSON.stringify(error));
+    return null;
   }
 } 

@@ -20,6 +20,8 @@ import remarkGfm from 'remark-gfm'
 import { ExcelMascot } from '@/components/ExcelMascot'
 import { RobotAvatar } from '@/components/RobotAvatar'
 import type { Components } from 'react-markdown'
+import { v4 as uuidv4 } from 'uuid'
+import { getLearningRecordId, getOrCreateQuestionCount, incrementQuestionCount, saveChatMessage } from '@/lib/supabase'
 
 const formatDataContent = (content: string) => {
   // 檢查是否包含表格式數據
@@ -322,6 +324,16 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const [currentExplanation, setCurrentExplanation] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 添加用於暫存對話記錄和提問次數的 state
+  const [pendingChatMessages, setPendingChatMessages] = useState<Array<{
+    content: string;
+    is_user: boolean;
+    timestamp: string;
+    imageUrl?: string;
+  }>>([]);
+  
+  const [pendingQuestionCount, setPendingQuestionCount] = useState<number>(0);
 
   // 修改 getLessonNumber 函數使用 lesson_id
   const getLessonNumber = (lessonId: string): number => {
@@ -513,6 +525,24 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const currentLesson = lessons.find(lesson => lesson.lesson_id === lessonState.currentLesson);
 
   useEffect(() => {
+    // Save initial welcome message to local state instead of Supabase
+    const saveInitialMessage = () => {
+      try {
+        // Add welcome message to pending messages
+        setPendingChatMessages([{
+          content: getInitialMessage(),
+          is_user: false,
+          timestamp: new Date().toISOString(),
+        }]);
+      } catch (err) {
+        console.error('Error saving initial message to local state:', err);
+      }
+    };
+    
+    saveInitialMessage();
+  }, [lessonState.currentLesson]);
+
+  useEffect(() => {
     // Initialize Gemini API with your API key
     const initializeAI = async () => {
       const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -605,7 +635,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           console.log('Using fallback lesson number:', fallbackLessonNumber);
           
           // Save learning record to Supabase with fallback number
-          await saveLearningRecord({
+          const learningRecordResult = await saveLearningRecord({
             student_id: studentId,
             student_name: studentName,
             lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 代替數字
@@ -613,6 +643,11 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             completed_at: utc8Time.toISOString(),
             time_spent_seconds: timeSpentSeconds
           });
+          
+          // 如果成功儲存學習記錄，則儲存暫存的聊天資料
+          if (learningRecordResult && learningRecordResult.length > 0) {
+            await savePendingChatData(learningRecordResult[0].id);
+          }
           
           // For level 5 (final level), also save to leaderboard
           if (getLessonNumber(lessonState.currentLesson) === 5) {
@@ -696,7 +731,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         });
         
         // Save learning record to Supabase
-        await saveLearningRecord({
+        const learningRecordResult = await saveLearningRecord({
           student_id: studentId,
           student_name: studentName,
           lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 而不是數字
@@ -704,6 +739,11 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           completed_at: utc8Time.toISOString(),
           time_spent_seconds: timeSpentSeconds
         });
+        
+        // 如果成功儲存學習記錄，則儲存暫存的聊天資料
+        if (learningRecordResult && learningRecordResult.length > 0) {
+          await savePendingChatData(learningRecordResult[0].id);
+        }
 
         // For level 5 (final level), also save to leaderboard
         if (getLessonNumber(lessonState.currentLesson) === 5) {
@@ -754,7 +794,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 completed_at: utc8Time.toISOString(),
                 stars_earned: maxStars
               });
-              
+     
               await saveLeaderboardEntry({
                 student_id: studentId,
                 student_name: studentName,
@@ -885,6 +925,55 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     }
     
     try {
+      const studentId = localStorage.getItem('student_id') || 'anonymous';
+      
+      // 檢查用戶是否已完成此課程（答案正確且已提交）
+      const hasCompletedLesson = lessonState.hasSubmitted && lessonState.isCorrect;
+      let learningRecordId: string | null = null;
+      
+      // 如果已完成課程，則嘗試獲取現有的learning_record_id
+      if (hasCompletedLesson) {
+        learningRecordId = await getLearningRecordId(studentId, lessonState.currentLesson);
+      }
+      
+      // 根據是否找到 learning_record_id 決定如何處理消息
+      if (hasCompletedLesson && learningRecordId) {
+        // 已完成課程且存在 learning_record_id，直接儲存到 Supabase
+        await saveChatMessage({
+          learning_record_id: learningRecordId,
+          student_id: studentId,
+          lesson_id: lessonState.currentLesson,
+          message_content: newMessage.content,
+          is_user: true,
+          timestamp: new Date().toISOString()
+        });
+        
+        // 更新問題計數
+        const questionCountRecord = await getOrCreateQuestionCount({
+          learning_record_id: learningRecordId,
+          student_id: studentId,
+          lesson_id: lessonState.currentLesson
+        });
+        
+        if (questionCountRecord) {
+          await incrementQuestionCount(questionCountRecord.id);
+        }
+      } else {
+        // 未完成課程或沒有 learning_record_id，先暫存
+        setPendingChatMessages(prev => [
+          ...prev, 
+          {
+            content: newMessage.content,
+            is_user: true,
+            timestamp: new Date().toISOString(),
+            imageUrl: currentImageUrl ? currentImageUrl : undefined
+          }
+        ]);
+        
+        // 增加暫存提問次數
+        setPendingQuestionCount(prev => prev + 1);
+      }
+      
       // 立即添加一個空的機器人消息來顯示打字動畫
       const tempBotMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -936,6 +1025,29 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       // 使用更新後的 getChatResponse 函數，傳遞圖片
       const aiResponse = await getChatResponse(chatInput, chatContext, currentImageUrl || undefined);
       
+      // 根據是否找到 learning_record_id 決定如何處理AI回應
+      if (hasCompletedLesson && learningRecordId) {
+        // 已完成課程且存在 learning_record_id，直接儲存到 Supabase
+        await saveChatMessage({
+          learning_record_id: learningRecordId,
+          student_id: studentId,
+          lesson_id: lessonState.currentLesson,
+          message_content: aiResponse,
+          is_user: false,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        // 未完成課程或沒有 learning_record_id，先暫存
+        setPendingChatMessages(prev => [
+          ...prev, 
+          {
+            content: aiResponse,
+            is_user: false,
+            timestamp: new Date().toISOString()
+          }
+        ]);
+      }
+      
       // 更新機器人的實際回應
       setChatMessages(prev => [
         ...prev.slice(0, -1),
@@ -969,6 +1081,49 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       setTimeout(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
+    }
+  };
+
+  // 添加一個儲存暫存聊天記錄到 Supabase 的函數
+  const savePendingChatData = async (learningRecordId: string) => {
+    try {
+      const studentId = localStorage.getItem('student_id') || 'anonymous';
+      
+      // 儲存所有暫存的聊天訊息
+      for (const message of pendingChatMessages) {
+        await saveChatMessage({
+          learning_record_id: learningRecordId,
+          student_id: studentId,
+          lesson_id: lessonState.currentLesson,
+          message_content: message.content,
+          is_user: message.is_user,
+          timestamp: message.timestamp
+        });
+      }
+      
+      // 創建或更新問題計數記錄
+      if (pendingQuestionCount > 0) {
+        const questionCountRecord = await getOrCreateQuestionCount({
+          learning_record_id: learningRecordId,
+          student_id: studentId,
+          lesson_id: lessonState.currentLesson
+        });
+        
+        if (questionCountRecord) {
+          // 更新為累計的提問次數
+          for (let i = 0; i < pendingQuestionCount; i++) {
+            await incrementQuestionCount(questionCountRecord.id);
+          }
+        }
+      }
+      
+      // 清空暫存資料
+      setPendingChatMessages([]);
+      setPendingQuestionCount(0);
+      
+      console.log('Successfully saved all pending chat data to Supabase');
+    } catch (error) {
+      console.error('Error saving pending chat data:', error);
     }
   };
 
