@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -53,9 +54,15 @@ export async function saveLearningRecord(record: Omit<LearningRecord, 'id'>) {
       throw new Error('Missing required fields for learning record');
     }
 
+    // Generate a unique UUID for the ID field
+    const recordWithId = {
+      ...record,
+      id: uuidv4()
+    };
+
     const { data, error } = await supabase
       .from('learning_records')
-      .insert([record])
+      .insert([recordWithId])
       .select();
 
     if (error) {
@@ -93,57 +100,22 @@ export async function saveLeaderboardEntry(entry: Omit<LeaderboardEntry, 'id' | 
       started_at: startTime
     });
 
-    // 檢查是否已經存在該學生的記錄
-    const { data: existingEntries, error: fetchError } = await supabase
+    // 總是插入新記錄，並加上UUID
+    const { data, error } = await supabase
       .from('leaderboard')
-      .select('id')
-      .eq('student_id', entry.student_id);
-      
-    if (fetchError) {
-      console.error('Error checking for existing entries:', fetchError.message || JSON.stringify(fetchError));
-      throw fetchError;
+      .insert([{
+        ...entry,
+        started_at: startTime,
+        id: uuidv4()
+      }])
+      .select();
+
+    if (error) {
+      console.error('Error saving leaderboard entry:', error.message || JSON.stringify(error));
+      throw error;
     }
     
-    let result;
-    
-    if (existingEntries && existingEntries.length > 0) {
-      // 如果存在記錄，更新最新的一筆
-      console.log('Updating existing leaderboard entry for student:', entry.student_id);
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .update({
-          ...entry,
-          started_at: startTime
-        })
-        .eq('id', existingEntries[0].id)
-        .select();
-        
-      if (error) {
-        console.error('Error updating leaderboard entry:', error.message || JSON.stringify(error));
-        throw error;
-      }
-      
-      result = data;
-    } else {
-      // 如果不存在記錄，插入新記錄
-      console.log('Creating new leaderboard entry for student:', entry.student_id);
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .insert([{
-          ...entry,
-          started_at: startTime
-        }])
-        .select();
-
-      if (error) {
-        console.error('Error saving leaderboard entry:', error.message || JSON.stringify(error));
-        throw error;
-      }
-      
-      result = data;
-    }
-
-    return result;
+    return data;
   } catch (error) {
     console.error('Error in saveLeaderboardEntry:', error instanceof Error ? error.message : JSON.stringify(error));
     throw error;

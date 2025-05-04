@@ -81,10 +81,8 @@ export const lessons: Lesson[] = [
           </div>
         </div>
         
-        <div class="flex rounded mb-4">
-          <div class="bg-blue-400 w-1 mr-3"></div>
-          <div class="bg-gray-50 p-3 w-full">
-            <p class="text-base">💡 <span class="font-bold">實用小提示</span></p>
+         <div class="mb-4 bg-gray-50 p-4">
+          <p class="mb-2">💡 <span class="font-bold">實用小提示：</span></p>
             <p>如果想要計算範圍中的所有非空儲存格（包括文字），可以使用 COUNTA 函數。例如 <span class="font-mono">=COUNTA(C1:C6)</span> 會得出 5。</p>
           </div>
         </div>
@@ -112,7 +110,7 @@ export const lessons: Lesson[] = [
           <div class="mb-3">
             <p class="font-bold mb-1">參數解釋：</p>
             <div class="bg-gray-50 p-3 rounded">
-              <ul class="space-y-1">
+              <ul class="space-y-1 list-disc ml-4">
                 <li><span class="font-bold text-blue-700">查找值：</span> 你已知的資訊（例如學生姓名「小明」）</li>
                 <li><span class="font-bold text-blue-700">表格範圍：</span> 包含所有資料的表格（必須把已知資訊放在第一列）</li>
                 <li><span class="font-bold text-blue-700">列號：</span> 你想獲取的資訊在第幾列（從左數起，第一列為1）</li>
@@ -167,34 +165,30 @@ export const lessons: Lesson[] = [
           </div>
           
           <p class="mb-2">在這個公式中：</p>
-          <ul class="list-disc pl-5 bg-gray-50 p-3 rounded space-y-1">
-            <li>"小華" 是我們要查找的值</li>
-            <li>A1:C5 是整個表格的範圍</li>
-            <li>3 表示我們要返回第3列的值（英語成績）</li>
-            <li>FALSE 表示我們要精確匹配"小華"</li>
-          </ul>
-        </div>
-
-        <div class="flex rounded mb-6">
-          <div class="bg-yellow-400 w-1 mr-3"></div>
-          <div class="bg-gray-50 p-3 w-full">
-            <p class="text-base">⚠️ <span class="font-bold">初學者注意事項</span></p>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>查找範圍的<span class="font-bold text-red-500">第一列</span>必須包含你要查找的值</li>
-              <li>建議使用 FALSE 進行精確匹配，避免意外的錯誤</li>
-              <li>如果找不到匹配的值，會返回 #N/A 錯誤</li>
-              <li>VLOOKUP 只能從左到右查找，不能從右到左</li>
+          <div class="bg-gray-50 p-3 rounded">
+            <ul class="list-disc ml-4 space-y-1">
+              <li>"小華" 是我們要查找的值</li>
+              <li>A1:C5 是整個表格的範圍</li>
+              <li>3 表示我們要返回第3列的值（英語成績）</li>
+              <li>FALSE 表示我們要精確匹配"小華"</li>
             </ul>
           </div>
         </div>
+
+        <div class="mb-6 bg-gray-50 p-4">
+          <p class="mb-2">⚠️ <span class="font-bold">初學者注意事項：</span></p>
+          <ul class="list-disc ml-6 space-y-1">
+            <li>查找範圍的<span class="font-bold text-red-500">第一列</span>必須包含你要查找的值</li>
+            <li>建議使用 FALSE 進行精確匹配，避免意外的錯誤</li>
+            <li>如果找不到匹配的值，會返回 #N/A 錯誤</li>
+            <li>VLOOKUP 只能從左到右查找，不能從右到左</li>
+          </ul>
+        </div>
         
-        <div class="flex rounded mb-4">
-          <div class="bg-blue-400 w-1 mr-3"></div>
-          <div class="bg-gray-50 p-3 w-full">
-            <p class="text-base">💡 <span class="font-bold">實用小提示</span></p>
-            <p>可以用 IFERROR 函數結合 VLOOKUP，當找不到匹配時顯示友好訊息：
-            <span class="font-mono block mt-1">=IFERROR(VLOOKUP("小明", A1:C5, 2, FALSE), "未找到資料")</span></p>
-          </div>
+        <div class="mb-4 bg-gray-50 p-4">
+          <p class="mb-2">💡 <span class="font-bold">實用小提示：</span></p>
+          <p>可以用 IFERROR 函數結合 VLOOKUP，當找不到匹配時顯示友好訊息：</p>
+          <p class="font-mono mt-1">=IFERROR(VLOOKUP("小明", A1:C5, 2, FALSE), "未找到資料")</p>
         </div>
       </div>
     `,
@@ -220,7 +214,7 @@ export const lessons: Lesson[] = [
           <div class="mb-3">
             <p class="font-bold mb-1">參數解釋：</p>
             <div class="bg-gray-50 p-3 rounded">
-              <ul class="space-y-1">
+              <ul class="space-y-1 list-disc ml-4">
                 <li><span class="font-bold text-blue-700">條件判斷：</span> 你想測試的條件（例如成績>=60）</li>
                 <li><span class="font-bold text-blue-700">條件為真時的值：</span> 當條件成立時顯示的結果（例如「及格」）</li>
                 <li><span class="font-bold text-blue-700">條件為假時的值：</span> 當條件不成立時顯示的結果（例如「不及格」）</li>
@@ -322,27 +316,21 @@ export const lessons: Lesson[] = [
           </table>
         </div>
         
-        <div class="flex rounded mb-6">
-          <div class="bg-yellow-400 w-1 mr-3"></div>
-          <div class="bg-gray-50 p-3 w-full">
-            <p class="text-base">⚠️ <span class="font-bold">初學者注意事項</span></p>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>巢狀 IF 函數（IF 裡面還有 IF）不建議超過 3 層，否則會難以閱讀和維護</li>
-              <li>如果條件太多，可以考慮使用 IFS 函數（Excel 2019 及以上版本支援）</li>
-              <li>條件判斷為 TRUE 時，會執行第二個參數；為 FALSE 時，會執行第三個參數</li>
-              <li>條件中可以使用 AND、OR 函數組合多個條件</li>
-            </ul>
-          </div>
+        <div class="mb-6 bg-gray-50 p-4">
+          <p class="mb-2">⚠️ <span class="font-bold">初學者注意事項：</span></p>
+          <ul class="list-disc ml-6 space-y-1">
+            <li>巢狀 IF 函數（IF 裡面還有 IF）不建議超過 3 層，否則會難以閱讀和維護</li>
+            <li>如果條件太多，可以考慮使用 IFS 函數（Excel 2019 及以上版本支援）</li>
+            <li>條件判斷為 TRUE 時，會執行第二個參數；為 FALSE 時，會執行第三個參數</li>
+            <li>條件中可以使用 AND、OR 函數組合多個條件</li>
+          </ul>
         </div>
         
-        <div class="flex rounded mb-4">
-          <div class="bg-blue-400 w-1 mr-3"></div>
-          <div class="bg-gray-50 p-3 w-full">
-            <p class="text-base">💡 <span class="font-bold">實用小提示</span></p>
-            <p>IF 函數不僅可以返回文字，還可以返回數值或計算結果。例如：
-            <span class="font-mono block mt-1">=IF(A1>100, A1*0.9, A1)</span>
-            表示如果 A1 大於 100，則打九折；否則維持原價。</p>
-          </div>
+        <div class="mb-4 bg-gray-50 p-4">
+          <p class="mb-2">💡 <span class="font-bold">實用小提示：</span></p>
+          <p>IF 函數不僅可以返回文字，還可以返回數值或計算結果。例如：</p>
+          <p class="font-mono mt-1">=IF(A1>100, A1*0.9, A1)</p>
+          <p>表示如果 A1 大於 100，則打九折；否則維持原價。</p>
         </div>
       </div>
     `,
@@ -361,7 +349,7 @@ export const lessons: Lesson[] = [
           <h3 class="text-xl font-bold mb-2 text-blue-700">樞紐分析表是什麼？</h3>
           <p class="mb-2">樞紐分析表就像是一個資料魔術師，它可以：</p>
           
-          <ul class="list-disc pl-5 bg-gray-50 p-3 rounded mb-3 space-y-1">
+          <ul class="list-disc ml-4 bg-gray-50 p-3 rounded mb-3 space-y-1">
             <li>迅速摘要大量資料</li>
             <li>自動計算總和、平均值、計數等</li>
             <li>根據不同角度重新組織資料</li>
@@ -397,7 +385,7 @@ export const lessons: Lesson[] = [
         <div class="mb-6">
           <h3 class="text-xl font-bold mb-2 text-blue-700">建立樞紐分析表的步驟</h3>
           
-          <ol class="list-decimal pl-5 space-y-2 mb-3">
+          <ol class="list-decimal ml-4 space-y-2 mb-3">
             <li class="bg-gray-50 p-3 rounded">
               <p class="font-bold text-blue-700">選擇資料範圍</p>
               <p>確保你的資料有標題行，並且沒有空白列或空白欄</p>
@@ -416,12 +404,9 @@ export const lessons: Lesson[] = [
             </li>
           </ol>
           
-          <div class="flex rounded mb-4">
-            <div class="bg-yellow-400 w-1 mr-3"></div>
-            <div class="bg-gray-50 p-3 w-full">
-              <p class="text-base">⚠️ <span class="font-bold">初學者提示</span></p>
-              <p>剛開始時，可以先將一個類別拖到「列」區域，將數值欄位拖到「值」區域，觀察結果後再逐步調整。</p>
-            </div>
+          <div class="mb-4 bg-gray-50 p-4">
+            <p class="mb-2">⚠️ <span class="font-bold">初學者提示：</span></p>
+            <p>剛開始時，可以先將一個類別拖到「列」區域，將數值欄位拖到「值」區域，觀察結果後再逐步調整。</p>
           </div>
         </div>
         
@@ -505,12 +490,9 @@ export const lessons: Lesson[] = [
           </div>
         </div>
         
-        <div class="flex rounded mb-4">
-          <div class="bg-blue-400 w-1 mr-3"></div>
-          <div class="bg-gray-50 p-3 w-full">
-            <p class="text-base">💡 <span class="font-bold">實用小提示</span></p>
-            <p>當你的原始資料更新後，只需要右鍵點擊樞紐分析表，選擇「重新整理」，所有分析結果就會自動更新，無需重新建立！</p>
-          </div>
+        <div class="mb-4 bg-gray-50 p-4">
+          <p class="mb-2">💡 <span class="font-bold">實用小提示：</span></p>
+          <p>當你的原始資料更新後，只需要右鍵點擊樞紐分析表，選擇「重新整理」，所有分析結果就會自動更新，無需重新建立！</p>
         </div>
       </div>
     `,

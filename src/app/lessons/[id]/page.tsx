@@ -351,15 +351,13 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         // 記錄關卡開始時間
         if (!isLessonCompleted) {
           const now = new Date();
-          const startTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000))
-            .toISOString()
-            .replace('Z', '+08:00');
-          localStorage.setItem(`lesson_${currentLessonId}_start_time`, startTime);
+          const lessonStartTime = new Date(now.toISOString());
+          localStorage.setItem(`lesson_${currentLessonId}_start_time`, lessonStartTime.toISOString());
           
           // For level 1, always set a global start time for the entire game if not already set
           if (getLessonNumber(currentLessonId) === 1 && !localStorage.getItem('start_time')) {
-            localStorage.setItem('start_time', startTime);
-            console.log('Setting global start_time from lesson 1:', startTime);
+            localStorage.setItem('start_time', lessonStartTime.toISOString());
+            console.log('Setting global start_time from lesson 1:', lessonStartTime.toISOString());
           }
           
           // For level 5, ensure a global start time exists
@@ -371,9 +369,12 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 localStorage.setItem('start_time', lesson1StartTime);
                 console.log('Setting global start_time from lesson 1:', lesson1StartTime);
               } else {
-                // As a last resort, use the current time
-                localStorage.setItem('start_time', startTime);
-                console.log('Setting fallback global start_time for level 5:', startTime);
+                // Fallback to current time if no lesson 1 start time
+                const currentTime = new Date();
+                const newGlobalStartTime = new Date(currentTime.toISOString())
+                  .toISOString();
+                localStorage.setItem('start_time', newGlobalStartTime);
+                console.log('Setting default global start_time:', newGlobalStartTime);
               }
             }
           }
@@ -517,7 +518,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     // Record completion time and update progress (only if correct)
     if (userAnswer === correctAnswer) {
       const now = new Date();
-      const utc8Time = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+      // 修改時區處理方式，確保儲存為 UTC 時間，讓 Supabase 能正確處理
+      const utc8Time = new Date(now.toISOString());
       
       // Get the start time from localStorage
       const startTimeKey = `lesson_${lessonState.currentLesson}_start_time`;
@@ -537,7 +539,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       // Calculate time spent in seconds
       let timeSpentSeconds = 0;
       if (startTimeStr) {
-        const startTime = new Date(startTimeStr);
+        // 將帶有時區標記的時間轉換為 Date 物件
+        const startTime = new Date(startTimeStr.replace('+08:00', 'Z'));
         timeSpentSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
         
         // Format time for display (MM:SS)
@@ -567,7 +570,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             student_id: studentId,
             student_name: studentName,
             lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 代替數字
-            started_at: startTimeStr,
+            started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
             completed_at: utc8Time.toISOString(),
             time_spent_seconds: timeSpentSeconds
           });
@@ -648,7 +651,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           student_id: studentId,
           student_name: studentName,
           lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 而不是數字
-          started_at: startTimeStr,
+          started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
           completed_at: utc8Time.toISOString(),
           time_spent_seconds: timeSpentSeconds
         });
@@ -658,7 +661,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           student_id: studentId,
           student_name: studentName,
           lesson_id: lessonState.currentLesson, // 使用原始的 lesson_id 而不是數字
-          started_at: startTimeStr,
+          started_at: startTimeStr.replace('+08:00', 'Z'), // 轉換為 UTC 時間
           completed_at: utc8Time.toISOString(),
           time_spent_seconds: timeSpentSeconds
         });
@@ -676,9 +679,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               } else {
                 // Fallback to current time if no lesson 1 start time
                 const currentTime = new Date();
-                const newGlobalStartTime = new Date(currentTime.getTime() - (currentTime.getTimezoneOffset() * 60000))
-                  .toISOString()
-                  .replace('Z', '+08:00');
+                const newGlobalStartTime = new Date(currentTime.toISOString())
+                  .toISOString();
                 localStorage.setItem('start_time', newGlobalStartTime);
                 console.log('Setting default global start_time:', newGlobalStartTime);
               }
