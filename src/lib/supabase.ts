@@ -244,12 +244,34 @@ export async function getLeaderboardStats(): Promise<LeaderboardStats> {
   const averageTime = `${averageMinutes}分${averageRemainingSeconds}秒`;
 
   // 添加排名數據（只顯示每個用戶的最佳成績）
-  const rankings = bestScores.map((record, index) => ({
-    student_id: record.student_id,
-    student_name: record.student_name,
-    completion_time_string: record.completion_time_string,
-    rank: index + 1
-  }));
+  const rankings = bestScores.map((record, index) => {
+    // 遮蔽學號中間四碼
+    let maskedStudentId = record.student_id;
+    if (maskedStudentId.length >= 8) {
+      maskedStudentId = maskedStudentId.slice(0, 2) + '****' + maskedStudentId.slice(-2);
+    } else if (maskedStudentId.length > 4) {
+      // 例如6~7碼，遮蔽中間2~3碼
+      const mid = Math.floor(maskedStudentId.length / 2) - 1;
+      maskedStudentId = maskedStudentId.slice(0, mid) + '****' + maskedStudentId.slice(mid + 4);
+    }
+    
+    // 遮蔽姓名
+    let maskedName = record.student_name;
+    if (maskedName.length === 3) {
+      // 三個字的名字，遮蔽中間字
+      maskedName = maskedName[0] + '○' + maskedName[2];
+    } else if (maskedName.length === 2) {
+      // 兩個字的名字，遮蔽第二個字
+      maskedName = maskedName[0] + '○';
+    }
+
+    return {
+      student_id: maskedStudentId,
+      student_name: maskedName,
+      completion_time_string: record.completion_time_string,
+      rank: index + 1
+    };
+  });
 
   return {
     total_participants: totalParticipants,

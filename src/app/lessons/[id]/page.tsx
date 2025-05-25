@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, Pencil, CheckCircle, XCircle, KeyRound, Image as ImageIcon } from 'lucide-react'
+import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, Pencil, CheckCircle, XCircle, KeyRound, Image as ImageIcon, BookOpen, Zap } from 'lucide-react'
 import { lessons } from '@/data/lessons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -1422,15 +1422,57 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
           </div>
 
           <Tabs ref={tabsRef} defaultValue={getLessonNumber(lessonState.currentLesson) === 5 ? 'game' : 'content'} className="mb-6 md:mb-8">
-            <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${showTabs.length}, 1fr)` }}>
+            <TabsList className="grid w-full gap-2 border-b border-gray-100 mb-2" style={{ gridTemplateColumns: `repeat(${showTabs.length}, 1fr)` }}>
               {showTabs.includes('content') && (
-                <TabsTrigger value="content" className="text-sm md:text-base">課程內容</TabsTrigger>
+                <TabsTrigger
+                  value="content"
+                  className={`
+                    flex items-center justify-center gap-2 px-6 py-2 rounded-full border-2 border-[#58CC02] font-bold text-base
+                    text-[#58CC02] bg-white
+                    transition-all duration-200
+                    shadow-sm
+                    data-[state=active]:bg-[#58CC02] data-[state=active]:text-white data-[state=active]:shadow-lg
+                    hover:bg-[#E6F9E6] hover:text-[#58CC02] cursor-pointer
+                    focus:outline-none
+                  `}
+                >
+                  <BookOpen className="w-5 h-5" />
+                  課程內容
+                </TabsTrigger>
               )}
               {showTabs.includes('practice') && (
-                <TabsTrigger value="practice" className="text-sm md:text-base">挑戰題</TabsTrigger>
+                <TabsTrigger
+                  value="practice"
+                  className={`
+                    flex items-center justify-center gap-2 px-6 py-2 rounded-full border-2 border-[#58CC02] font-bold text-base
+                    text-[#58CC02] bg-white
+                    transition-all duration-200
+                    shadow-sm
+                    data-[state=active]:bg-[#58CC02] data-[state=active]:text-white data-[state=active]:shadow-lg
+                    hover:bg-[#E6F9E6] hover:text-[#58CC02] cursor-pointer
+                    focus:outline-none
+                  `}
+                >
+                  <Zap className="w-5 h-5" />
+                  挑戰題
+                </TabsTrigger>
               )}
               {showTabs.includes('game') && (
-                <TabsTrigger value="game" className="text-sm md:text-base">遊戲關卡</TabsTrigger>
+                <TabsTrigger
+                  value="game"
+                  className={`
+                    flex items-center justify-center gap-2 px-6 py-2 rounded-full border-2 border-[#58CC02] font-bold text-base
+                    text-[#58CC02] bg-white
+                    transition-all duration-200
+                    shadow-sm
+                    data-[state=active]:bg-[#58CC02] data-[state=active]:text-white data-[state=active]:shadow-lg
+                    hover:bg-[#E6F9E6] hover:text-[#58CC02] cursor-pointer
+                    focus:outline-none
+                  `}
+                >
+                  <FileSpreadsheet className="w-5 h-5" />
+                  遊戲關卡
+                </TabsTrigger>
               )}
             </TabsList>
             
