@@ -1427,7 +1427,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 <TabsTrigger value="content" className="text-sm md:text-base">課程內容</TabsTrigger>
               )}
               {showTabs.includes('practice') && (
-                <TabsTrigger value="practice" className="text-sm md:text-base">互動練習</TabsTrigger>
+                <TabsTrigger value="practice" className="text-sm md:text-base">挑戰題</TabsTrigger>
               )}
               {showTabs.includes('game') && (
                 <TabsTrigger value="game" className="text-sm md:text-base">遊戲關卡</TabsTrigger>
@@ -1478,7 +1478,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 <Card className="bg-white rounded-2xl shadow-sm border border-gray-100">
                   <div className="bg-gray-900 text-white p-4 rounded-t-2xl">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-lg md:text-xl font-semibold">互動練習</h2>
+                      <h2 className="text-lg md:text-xl font-semibold">挑戰題</h2>
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1 text-sm">
                           <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />

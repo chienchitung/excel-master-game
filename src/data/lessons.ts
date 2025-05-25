@@ -159,7 +159,7 @@ export const lessons: Lesson[] = [
           <div class="mb-3">
             <p class="font-bold mb-1">如果我想查找「小華」的英語成績：</p>
             <div class="bg-gray-50 p-3 rounded">
-              <p class="font-mono text-blue-600">=VLOOKUP("小華", A1:C5, 3, FALSE)</p>
+              <p class="font-mono text-blue-600">=VLOOKUP("小華", $A$1:$C$5, 3, FALSE)</p>
               <p class="mt-1">結果：95（「小華」的英語成績）</p>
             </div>
           </div>
