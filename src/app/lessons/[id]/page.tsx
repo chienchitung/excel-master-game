@@ -1512,23 +1512,29 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                   />
                   <div className="mt-8 border-t pt-8">
                     <h3 className="text-xl font-semibold mb-4">互動教學</h3>
-                      <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
-                        <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
-                          <iframe 
-                            title="Excel Learning"
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              border: 'none'
-                            }}
-                            src={geniallyLink}
-                            allowFullScreen={true}
-                          />
+                      {geniallyLink ? (
+                        <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
+                          <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
+                            <iframe 
+                              title="Excel Learning"
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                border: 'none'
+                              }}
+                              src={geniallyLink}
+                              allowFullScreen={true}
+                            />
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
+                          互動教學內容正在加載中...
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -1684,19 +1690,25 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                   <div className="bg-gray-50 rounded-xl p-6">
                     <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
                       <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
-                        <iframe 
-                          title="Excel Learning"
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            border: 'none'
-                          }}
-                          src={geniallyLink}
-                          allowFullScreen={true}
-                        />
+                        {geniallyLink ? (
+                          <iframe 
+                            title="Excel Learning"
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              border: 'none'
+                            }}
+                            src={geniallyLink}
+                            allowFullScreen={true}
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                            <p className="text-gray-500">遊戲內容正在加載中...</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
