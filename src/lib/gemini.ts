@@ -76,7 +76,7 @@ const SYSTEM_PROMPT = `
 // 全局變數來保存 GoogleGenAI 實例
 let genAI: GoogleGenAI | null = null;
 // 使用最新的 Gemini 2.5 Flash Preview 模型
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-2.5-flash-lite';
 
 // 驗證 API key 格式
 function isValidApiKey(apiKey: string): boolean {

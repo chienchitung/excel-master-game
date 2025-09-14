@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, use } from "react"
+import React, { useState, useEffect, useRef, use } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { State, type ChatMessage } from '@/types/lesson'
 import { getProgress, updateLessonProgress } from '@/lib/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats, supabase, getGeniallyLink } from '@/lib/supabase'
+import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats, supabase, getGeniallyLink, getLessonMarkdownContent } from '@/lib/supabase'
 import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
@@ -138,6 +138,10 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
                         components={{
+                          h1: ({children}) => <h1 className="text-xl font-bold mb-4 text-blue-600">{children}</h1>,
+                          h2: ({children}) => <h2 className="text-lg font-semibold mb-3 mt-6">{children}</h2>,
+                          h3: ({children}) => <h3 className="text-md font-semibold mb-2 mt-4">{children}</h3>,
+                          h4: ({children}) => <h4 className="font-medium mb-2 mt-4">{children}</h4>,
                           table: ({ children }) => (
                             <div className="overflow-x-auto my-4">
                               <table className="min-w-full border-collapse border border-gray-300">
@@ -160,11 +164,88 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                               {children}
                             </p>
                           ),
+                          ul: ({children}) => <ul className="list-disc pl-6 mb-4">{children}</ul>,
+                          ol: ({children}) => <ol className="list-decimal pl-6 mb-4">{children}</ol>,
+                          li: ({children}) => <li className="mb-1">{children}</li>,
+                          blockquote: ({children}) => {
+                            // 檢查內容是否包含特殊提示標記
+                            const childrenArray = React.Children.toArray(children);
+                            const firstChild = childrenArray[0];
+                            
+                            // 類型斷言和類型守衛
+                            const isReactElement = (obj: any): obj is React.ReactElement => {
+                              return obj !== null && typeof obj === 'object' && 'props' in obj;
+                            };
+
+                            // 檢查是否為警告提示
+                            if (isReactElement(firstChild) && 
+                                firstChild.props?.children) {
+                              // 將子元素轉換為字符串，但先確保它是可以toString()的類型
+                              const childContent = String(firstChild.props.children);
+                              if (childContent.includes('⚠️ **Warning:**')) {
+                                return (
+                                  <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-4 rounded-r">
+                                    <div className="flex">
+                                      <div className="flex-shrink-0 text-amber-500">⚠️</div>
+                                      <div className="ml-3 text-amber-700">{children}</div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            }
+                            
+                            // 檢查是否為提示
+                            if (isReactElement(firstChild) && 
+                                firstChild.props?.children) {
+                              // 將子元素轉換為字符串，但先確保它是可以toString()的類型
+                              const childContent = String(firstChild.props.children);
+                              if (childContent.includes('💡 **Tip:**')) {
+                                return (
+                                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-r">
+                                    <div className="flex">
+                                      <div className="flex-shrink-0 text-blue-500">💡</div>
+                                      <div className="ml-3 text-blue-700">{children}</div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            }
+                            
+                            // 檢查是否為注意事項
+                            if (isReactElement(firstChild) && 
+                                firstChild.props?.children) {
+                              // 將子元素轉換為字符串，但先確保它是可以toString()的類型
+                              const childContent = String(firstChild.props.children);
+                              if (childContent.includes('**Note:**')) {
+                                return (
+                                  <div className="bg-gray-50 border-l-4 border-gray-500 p-4 mb-4 rounded-r">
+                                    <div className="flex">
+                                      <div className="ml-3 text-gray-700">{children}</div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            }
+                            
+                            // 默認引用塊樣式
+                            return (
+                              <blockquote className="border-l-4 border-gray-300 pl-4 py-1 mb-4 italic text-gray-700">
+                                {children}
+                              </blockquote>
+                            );
+                          },
                           code: ({ children, className, node, ...props }) => {
                             const match = /language-(\w+)/.exec(className || '')
-                            return match 
-                              ? <pre className="p-4 bg-gray-100 rounded overflow-x-auto"><code className={className}>{children}</code></pre>
-                              : <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
+                            if (match) {
+                              return (
+                                <div className="my-6 border-l-4 border-blue-500">
+                                  <pre className="pl-4 py-4 bg-blue-50 overflow-x-auto text-gray-800 font-mono text-sm">
+                                    <code className={className}>{children}</code>
+                                  </pre>
+                                </div>
+                              )
+                            }
+                            return <code className="px-1.5 py-0.5 bg-blue-50 rounded text-blue-600 font-mono text-sm">{children}</code>
                           }
                         }}
                       >
@@ -336,6 +417,9 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   }>>([]);
   
   const [pendingQuestionCount, setPendingQuestionCount] = useState<number>(0);
+
+  // 添加 lessonMarkdown 狀態
+  const [lessonMarkdown, setLessonMarkdown] = useState<string | null>(null);
 
   // 修改 getLessonNumber 函數使用 lesson_id
   const getLessonNumber = (lessonId: string): number => {
@@ -523,6 +607,34 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     };
     
     fetchGeniallyLink();
+  }, [lessonState.currentLesson]);
+
+  // 添加獲取課程 Markdown 內容的函數
+  useEffect(() => {
+    const fetchLessonMarkdown = async () => {
+      setContentLoading(true); // 開始加載時設置為 true
+      try {
+        // 從 Supabase 獲取當前課程的 Markdown 內容
+        const markdown = await getLessonMarkdownContent(lessonState.currentLesson);
+        if (markdown) {
+          setLessonMarkdown(markdown);
+          console.log('Fetched lesson markdown content');
+        } else {
+          setLessonMarkdown(null);
+          console.log('No markdown content found for lesson');
+        }
+      } catch (error) {
+        console.error('Error fetching lesson markdown content:', error);
+        setLessonMarkdown(null);
+      } finally {
+        // 無論成功或失敗，都將加載狀態設為 false
+        setTimeout(() => {
+          setContentLoading(false);
+        }, 300); // 短暫延遲確保 DOM 更新
+      }
+    };
+    
+    fetchLessonMarkdown();
   }, [lessonState.currentLesson]);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -1359,6 +1471,16 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   // 添加 geniallyLink 狀態來存儲連結
   const [geniallyLink, setGeniallyLink] = useState<string | null>(null);
 
+  // 在組件渲染前確保 Markdown 內容已準備好
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // 增加內容加載狀態
+  const [contentLoading, setContentLoading] = useState(true);
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       <header className="bg-white border-b sticky top-0 z-50">
@@ -1506,12 +1628,148 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     <h2 className="text-lg md:text-xl font-semibold">課程內容</h2>
                   </div>
                   <div className="p-6">
-                  <div 
-                    className="prose max-w-none"
-                    dangerouslySetInnerHTML={{ __html: currentLesson?.content || '' }}
-                  />
-                  <div className="mt-8 border-t pt-8">
-                    <h3 className="text-xl font-semibold mb-4">互動教學</h3>
+                    {contentLoading ? (
+                      // 顯示加載骨架屏，完全替代內容直到加載完成
+                      <div className="animate-pulse space-y-4">
+                        <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-4/5"></div>
+                          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                        <div className="h-32 bg-gray-200 rounded"></div>
+                      </div>
+                    ) : (
+                      <div className="prose max-w-none">
+                        {lessonMarkdown ? (
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h1: ({children}) => <h1 className="text-3xl font-bold mb-6 text-blue-600">{children}</h1>,
+                              h2: ({children}) => <h2 className="text-2xl font-semibold mb-4 mt-8 text-blue-600">{children}</h2>,
+                              h3: ({children}) => <h3 className="text-xl font-semibold mb-3 mt-6">{children}</h3>,
+                              h4: ({children}) => <h4 className="text-lg font-medium mb-2 mt-4">{children}</h4>,
+                              table: ({ children }) => (
+                                <div className="overflow-x-auto my-4">
+                                  <table className="min-w-full border-collapse border border-gray-300">
+                                    {children}
+                                  </table>
+                                </div>
+                              ),
+                              th: ({ children }) => (
+                                <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left">
+                                  {children}
+                                </th>
+                              ),
+                              td: ({ children }) => (
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {children}
+                                </td>
+                              ),
+                              p: ({ children }) => (
+                                <p className="mb-4 last:mb-0 whitespace-pre-wrap">
+                                  {children}
+                                </p>
+                              ),
+                              ul: ({children}) => <ul className="list-disc pl-6 mb-4">{children}</ul>,
+                              ol: ({children}) => <ol className="list-decimal pl-6 mb-4">{children}</ol>,
+                              li: ({children}) => <li className="mb-1">{children}</li>,
+                              blockquote: ({children}) => {
+                                // 檢查內容是否包含特殊提示標記
+                                const childrenArray = React.Children.toArray(children);
+                                const firstChild = childrenArray[0];
+                                
+                                // 類型斷言和類型守衛
+                                const isReactElement = (obj: any): obj is React.ReactElement => {
+                                  return obj !== null && typeof obj === 'object' && 'props' in obj;
+                                };
+
+                                // 檢查是否為警告提示
+                                if (isReactElement(firstChild) && 
+                                    firstChild.props?.children) {
+                                  // 將子元素轉換為字符串，但先確保它是可以toString()的類型
+                                  const childContent = String(firstChild.props.children);
+                                  if (childContent.includes('⚠️ **Warning:**')) {
+                                    return (
+                                      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-4 rounded-r">
+                                        <div className="flex">
+                                          <div className="flex-shrink-0 text-amber-500">⚠️</div>
+                                          <div className="ml-3 text-amber-700">{children}</div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                }
+                                
+                                // 檢查是否為提示
+                                if (isReactElement(firstChild) && 
+                                    firstChild.props?.children) {
+                                  // 將子元素轉換為字符串，但先確保它是可以toString()的類型
+                                  const childContent = String(firstChild.props.children);
+                                  if (childContent.includes('💡 **Tip:**')) {
+                                    return (
+                                      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-r">
+                                        <div className="flex">
+                                          <div className="flex-shrink-0 text-blue-500">💡</div>
+                                          <div className="ml-3 text-blue-700">{children}</div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                }
+                                
+                                // 檢查是否為注意事項
+                                if (isReactElement(firstChild) && 
+                                    firstChild.props?.children) {
+                                  // 將子元素轉換為字符串，但先確保它是可以toString()的類型
+                                  const childContent = String(firstChild.props.children);
+                                  if (childContent.includes('**Note:**')) {
+                                    return (
+                                      <div className="bg-gray-50 border-l-4 border-gray-500 p-4 mb-4 rounded-r">
+                                        <div className="flex">
+                                          <div className="ml-3 text-gray-700">{children}</div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                }
+                                
+                                // 默認引用塊樣式
+                                return (
+                                  <blockquote className="border-l-4 border-gray-300 pl-4 py-1 mb-4 italic text-gray-700">
+                                    {children}
+                                  </blockquote>
+                                );
+                              },
+                              code: ({ children, className, node, ...props }) => {
+                                const match = /language-(\w+)/.exec(className || '')
+                                if (match) {
+                                  return (
+                                    <div className="my-6 border-l-4 border-blue-500">
+                                      <pre className="pl-4 py-4 bg-blue-50 overflow-x-auto text-gray-800 font-mono text-sm">
+                                        <code className={className}>{children}</code>
+                                      </pre>
+                                    </div>
+                                  )
+                                }
+                                return <code className="px-1.5 py-0.5 bg-blue-50 rounded text-blue-600 font-mono text-sm">{children}</code>
+                              }
+                            }}
+                          >
+                            {lessonMarkdown}
+                          </ReactMarkdown>
+                        ) : isClient && currentLesson?.content ? (
+                          <div dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
+                        ) : (
+                          <p>課程內容加載失敗，請刷新頁面重試。</p>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="mt-8 border-t pt-8">
+                      <h3 className="text-xl font-semibold mb-4">互動教學</h3>
                       {geniallyLink ? (
                         <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
                           <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>

@@ -502,7 +502,68 @@ export const lessons: Lesson[] = [
     number: 5,
     title: "綜合測驗",
     description: "測試您對所有 Excel 函數的掌握程度",
-    content: "",
+    content: `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-4 text-blue-600 border-b pb-2">綜合測驗：Excel 技能實戰挑戰</h2>
+        <p class="mb-4">恭喜你學習到最後一關！現在是時候測試你對所有 Excel 函數的掌握程度了。在這個綜合測驗中，你將面臨各種實際工作場景中的 Excel 問題。</p>
+        
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-2 text-blue-700">綜合測驗說明</h3>
+          <p class="mb-2">在這測驗中，您需要運用前面學習的所有函數知識來解決實際問題。</p>
+          
+          <div class="bg-gray-50 p-3 rounded mb-3">
+            <ul class="list-disc ml-4 space-y-1">
+              <li>運用 SUM、AVERAGE 函數進行數據統計</li>
+              <li>使用 VLOOKUP 函數查找相關數據</li>
+              <li>使用 IF 函數進行條件判斷</li>
+              <li>創建樞紐分析表進行數據分析</li>
+            </ul>
+          </div>
+          
+          <p class="text-blue-600 font-semibold">完成測驗後，您將獲得終極密碼！</p>
+        </div>
+        
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-2 text-blue-700">測驗要點</h3>
+          
+          <div class="bg-gray-50 p-3 rounded mb-4">
+            <h4 class="font-bold text-blue-700 mb-2">1. 數據彙總與統計</h4>
+            <p>使用 SUM 和 AVERAGE 函數計算銷售總額、平均訂單金額等關鍵指標。</p>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded mb-4">
+            <h4 class="font-bold text-blue-700 mb-2">2. 數據查詢與檢索</h4>
+            <p>使用 VLOOKUP 函數根據客戶ID或產品編號查詢相關信息。</p>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded mb-4">
+            <h4 class="font-bold text-blue-700 mb-2">3. 條件邏輯應用</h4>
+            <p>使用 IF 函數對數據進行分類，例如識別高價值訂單或特定區域的銷售表現。</p>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded mb-4">
+            <h4 class="font-bold text-blue-700 mb-2">4. 數據分析與視覺化</h4>
+            <p>創建樞紐分析表，分析不同維度的銷售數據，找出業務趨勢和機會。</p>
+          </div>
+        </div>
+        
+        <div class="mb-4 bg-gray-50 p-4">
+          <p class="mb-2">⚠️ <span class="font-bold">提示：</span></p>
+          <p>在解決測驗問題時，請遵循以下步驟：</p>
+          <ol class="list-decimal ml-6 space-y-1">
+            <li>仔細閱讀問題要求，明確需要計算的內容</li>
+            <li>識別需要使用的函數及其參數</li>
+            <li>依照邏輯順序構建公式</li>
+            <li>檢查結果是否合理</li>
+          </ol>
+        </div>
+        
+        <div class="mb-4 bg-gray-50 p-4">
+          <p class="mb-2">💡 <span class="font-bold">實用小提示：</span></p>
+          <p>在處理複雜問題時，可以將大問題拆分成小步驟，逐個解決。有時候使用多個簡單函數的組合比一個複雜的嵌套函數更容易理解和維護。</p>
+        </div>
+      </div>
+    `,
     showGame: true,
     isFinal: true,
   }

@@ -50,20 +50,20 @@ export interface LessonOrderMapping {
 
 export interface ChatMessageRecord {
   id?: string;
-  learning_record_id: string;
-  student_id: string;
-  lesson_id: string;
-  message_content: string;
-  is_user: boolean;
-  timestamp: string;
+  learning_record_id: string
+  student_id: string
+  lesson_id: string
+  message_content: string
+  is_user: boolean
+  timestamp: string
 }
 
 export interface QuestionCountRecord {
-  id?: string;
-  learning_record_id: string;
-  student_id: string;
-  lesson_id: string;
-  question_count: number;
+  id?: string
+  learning_record_id: string
+  student_id: string
+  lesson_id: string
+  question_count: number
 }
 
 export async function saveLearningRecord(record: Omit<LearningRecord, 'id'>) {
@@ -510,5 +510,26 @@ export async function getAllGeniallyLinks(): Promise<Map<string, string>> {
   } catch (error) {
     console.error('Error getting all Genially links:', error instanceof Error ? error.message : JSON.stringify(error));
     return new Map<string, string>();
+  }
+}
+
+// Function to get Markdown content for a specific lesson
+export async function getLessonMarkdownContent(lessonId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('markdown_content')
+      .eq('id', lessonId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching lesson markdown content:', error.message || JSON.stringify(error));
+      return null;
+    }
+    
+    return data?.markdown_content || null;
+  } catch (error) {
+    console.error('Error getting lesson markdown content:', error instanceof Error ? error.message : JSON.stringify(error));
+    return null;
   }
 }
