@@ -8,8 +8,8 @@ import { getProgress, resetProgress } from '@/lib/progress'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
-import { getLeaderboardStats, getPlayerRank, getLessonOrderMappings, getAllGeniallyLinks } from '@/lib/supabase'
-import { UserProgress, Lesson } from '@/types/lesson'
+import { getLeaderboardStats, getPlayerRank, getLessonOrderMappings } from '@/lib/supabase'
+import { Lesson } from '@/types/lesson'
 
 interface ProgressData {
   completedLessons: string[];
@@ -52,7 +52,6 @@ export default function HomePage() {
   });
   const router = useRouter();
 
-  const [lessonMappings, setLessonMappings] = useState<{[key: string]: number}>({});
   const [isLoading, setIsLoading] = useState(true);
 
   // Add state for mapped lessons
@@ -79,9 +78,6 @@ export default function HomePage() {
             }
           });
           
-          // Sort the mappings by number
-          const mappingsByNumber = [...mappingsData[0].mapping].sort((a, b) => a.number - b.number);
-          
           // Map the lessons using the number property
           const mappedLessonsData = lessons.map(lesson => {
             // Find if there's a mapping for this lesson number
@@ -99,7 +95,6 @@ export default function HomePage() {
           console.log('Mapped lessons:', mappedLessonsData);
           
           setMappedLessons(mappedLessonsData);
-          setLessonMappings(lessonIdToNumber);
         } else {
           console.log('No lesson mappings found, using default lessons');
           // If no mapping found, use lessons as is but ensure they're sorted
@@ -165,7 +160,6 @@ export default function HomePage() {
 
   const isStarted = progress.completedLessons.length > 0;
   const isCompleted = progress.completedLessons.length === lessons.length;
-  const nextLessonId = isStarted ? Math.min(progress.completedLessons.length + 1, lessons.length) : 1;
 
   const handleReset = () => {
     // 清除所有追蹤資料
@@ -266,12 +260,6 @@ export default function HomePage() {
     
     // If no lessons are completed, start with the first one
     return mappedLessons[0].lesson_id;
-  };
-
-  // Update getLessonNumber function to use lesson's number property
-  const getLessonNumber = (lessonId: string): number => {
-    const lesson = mappedLessons.find(l => l.lesson_id === lessonId);
-    return lesson ? lesson.number : 0;
   };
 
   if (isLoading) {

@@ -234,7 +234,7 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                               </blockquote>
                             );
                           },
-                          code: ({ children, className, node, ...props }) => {
+                          code: ({ children, className, node, ...rest }) => {
                             const match = /language-(\w+)/.exec(className || '')
                             if (match) {
                               return (
@@ -1356,12 +1356,12 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                           components={{
                             p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>,
                             li: ({children}) => <li className="mb-1">{children}</li>,
-                            code: ({ children, className, node, ...props }) => {
+                            code: ({ children, className, node, ...rest }) => {
                               const match = /language-(\w+)/.exec(className || '')
                               return match 
                                 ? <pre className="p-4 bg-gray-100 rounded overflow-x-auto"><code className={className}>{children}</code></pre>
                                 : <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
-                          }
+                            }
                           }}
                         >
                           {formatExplanation(currentExplanation)}
@@ -1743,7 +1743,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                                   </blockquote>
                                 );
                               },
-                              code: ({ children, className, node, ...props }) => {
+                              code: ({ children, className, node, ...rest }) => {
                                 const match = /language-(\w+)/.exec(className || '')
                                 if (match) {
                                   return (

@@ -98,7 +98,7 @@ export async function initializeGemini(apiKey: string): Promise<void> {
     genAI = new GoogleGenAI({ apiKey });
     
     // 進行一個簡單的測試呼叫以確認 API 可以正常工作
-    const result = await genAI.models.generateContent({
+    await genAI.models.generateContent({
       model: MODEL_NAME,
       contents: 'test',
     });

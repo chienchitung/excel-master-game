@@ -372,7 +372,7 @@ export async function saveChatMessage(message: Omit<ChatMessageRecord, 'id'>) {
 export async function getOrCreateQuestionCount(record: Omit<QuestionCountRecord, 'id' | 'question_count'>): Promise<{ id: string, question_count: number } | null> {
   try {
     // First try to get existing record
-    const { data: existingData, error: getError } = await supabase
+    const { data: existingData } = await supabase
       .from('question_counts')
       .select('id, question_count')
       .eq('learning_record_id', record.learning_record_id)
