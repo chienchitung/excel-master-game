@@ -3,9 +3,9 @@ import { Lesson } from '../types/lesson'
 // Mapping from lesson_id to lesson number
 const lessonMapping = {
   "a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c": 1, 
-  "b2c3d4e5-f6a7-58b9-ac0d-2e3f4a5b6c7d": 3, 
-  "c3d4e5f6-a7b8-69ca-bd1e-3f4a5b6c7d8e": 2, 
-  "d4e5f6a7-b8c9-7adb-ce2f-4a5b6c7d8e9f": 4, 
+  "b2c3d4e5-f6a7-58b9-ac0d-2e3f4a5b6c7d": 2, 
+  "d4e5f6a7-b8c9-7adb-ce2f-4a5b6c7d8e9f": 3, 
+  "c3d4e5f6-a7b8-69ca-bd1e-3f4a5b6c7d8e": 4, 
   "e5f6a7b8-c9da-8bec-df3a-5b6c7d8e9f0a": 5
 }
 
@@ -92,110 +92,6 @@ export const lessons: Lesson[] = [
   {
     lesson_id: getLessonId(2),
     number: 2,
-    title: "VLOOKUP 函數應用",
-    description: "掌握 VLOOKUP 函數的使用方法",
-    content: `
-      <div class="p-4">
-        <h2 class="text-2xl font-bold mb-4 text-blue-600 border-b pb-2">VLOOKUP 函數：查找資料的好幫手</h2>
-        <p class="mb-4">VLOOKUP 函數就像是一位圖書館管理員，能夠幫我們在大量數據中快速找到我們需要的資訊。這個函數特別適合處理表格型資料，例如學生名單、產品目錄或銷售記錄。</p>
-        
-        <div class="mb-6">
-          <h3 class="text-xl font-bold mb-2 text-blue-700">VLOOKUP 的基本概念</h3>
-          <p class="mb-2">想像你有一張學生成績表，你知道學生的姓名，想找出他的成績。VLOOKUP 可以根據學生姓名（你已知的資訊）查找對應的成績（你想知道的資訊）。</p>
-          
-          <div class="bg-gray-50 p-3 rounded mb-3 font-mono border-l-4 border-blue-500">
-            =VLOOKUP(查找值, 表格範圍, 列號, [是否模糊匹配])
-          </div>
-          
-          <div class="mb-3">
-            <p class="font-bold mb-1">參數解釋：</p>
-            <div class="bg-gray-50 p-3 rounded">
-              <ul class="space-y-1 list-disc ml-4">
-                <li><span class="font-bold text-blue-700">查找值：</span> 你已知的資訊（例如學生姓名「小明」）</li>
-                <li><span class="font-bold text-blue-700">表格範圍：</span> 包含所有資料的表格（必須把已知資訊放在第一列）</li>
-                <li><span class="font-bold text-blue-700">列號：</span> 你想獲取的資訊在第幾列（從左數起，第一列為1）</li>
-                <li><span class="font-bold text-blue-700">是否模糊匹配：</span> TRUE 表示近似匹配，FALSE 表示精確匹配（建議初學者使用 FALSE）</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        
-        <div class="mb-6">
-          <h3 class="text-xl font-bold mb-2 text-blue-700">實際案例：學生成績查詢</h3>
-          <p class="mb-2">假設我們有一張表格，A1:C5 包含以下資料：</p>
-          
-          <table class="border-collapse w-full mb-3 bg-gray-50">
-            <thead>
-              <tr class="bg-gray-100">
-                <th class="border border-gray-300 p-2 text-left">學生姓名</th>
-                <th class="border border-gray-300 p-2 text-left">數學成績</th>
-                <th class="border border-gray-300 p-2 text-left">英語成績</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td class="border border-gray-300 p-2">小明</td>
-                <td class="border border-gray-300 p-2">85</td>
-                <td class="border border-gray-300 p-2">92</td>
-              </tr>
-              <tr>
-                <td class="border border-gray-300 p-2">小花</td>
-                <td class="border border-gray-300 p-2">90</td>
-                <td class="border border-gray-300 p-2">88</td>
-              </tr>
-              <tr>
-                <td class="border border-gray-300 p-2">小華</td>
-                <td class="border border-gray-300 p-2">78</td>
-                <td class="border border-gray-300 p-2">95</td>
-              </tr>
-              <tr>
-                <td class="border border-gray-300 p-2">小強</td>
-                <td class="border border-gray-300 p-2">95</td>
-                <td class="border border-gray-300 p-2">80</td>
-              </tr>
-            </tbody>
-          </table>
-          
-          <div class="mb-3">
-            <p class="font-bold mb-1">如果我想查找「小華」的英語成績：</p>
-            <div class="bg-gray-50 p-3 rounded">
-              <p class="font-mono text-blue-600">=VLOOKUP("小華", $A$1:$C$5, 3, FALSE)</p>
-              <p class="mt-1">結果：95（「小華」的英語成績）</p>
-            </div>
-          </div>
-          
-          <p class="mb-2">在這個公式中：</p>
-          <div class="bg-gray-50 p-3 rounded">
-            <ul class="list-disc ml-4 space-y-1">
-              <li>"小華" 是我們要查找的值</li>
-              <li>A1:C5 是整個表格的範圍</li>
-              <li>3 表示我們要返回第3列的值（英語成績）</li>
-              <li>FALSE 表示我們要精確匹配"小華"</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="mb-6 bg-gray-50 p-4">
-          <p class="mb-2">⚠️ <span class="font-bold">初學者注意事項：</span></p>
-          <ul class="list-disc ml-6 space-y-1">
-            <li>查找範圍的<span class="font-bold text-red-500">第一列</span>必須包含你要查找的值</li>
-            <li>建議使用 FALSE 進行精確匹配，避免意外的錯誤</li>
-            <li>如果找不到匹配的值，會返回 #N/A 錯誤</li>
-            <li>VLOOKUP 只能從左到右查找，不能從右到左</li>
-          </ul>
-        </div>
-        
-        <div class="mb-4 bg-gray-50 p-4">
-          <p class="mb-2">💡 <span class="font-bold">實用小提示：</span></p>
-          <p>可以用 IFERROR 函數結合 VLOOKUP，當找不到匹配時顯示友好訊息：</p>
-          <p class="font-mono mt-1">=IFERROR(VLOOKUP("小明", A1:C5, 2, FALSE), "未找到資料")</p>
-        </div>
-      </div>
-    `,
-  },
-  {
-    lesson_id: getLessonId(3),
-    number: 3,
     title: "IF 條件函數",
     description: "學習使用 IF 函數進行條件判斷",
     content: `
@@ -336,8 +232,8 @@ export const lessons: Lesson[] = [
     `,
   },
   {
-    lesson_id: getLessonId(4),
-    number: 4,
+    lesson_id: getLessonId(3),
+    number: 3,
     title: "樞紐分析表",
     description: "學習創建和使用樞紐分析表",
     content: `
@@ -498,6 +394,110 @@ export const lessons: Lesson[] = [
     `,
   },
   {
+    lesson_id: getLessonId(4),
+    number: 4,
+    title: "VLOOKUP 函數",
+    description: "掌握 VLOOKUP 函數的使用方法",
+    content: `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-4 text-blue-600 border-b pb-2">VLOOKUP 函數：查找資料的好幫手</h2>
+        <p class="mb-4">VLOOKUP 函數就像是一位圖書館管理員，能夠幫我們在大量數據中快速找到我們需要的資訊。這個函數特別適合處理表格型資料，例如學生名單、產品目錄或銷售記錄。</p>
+        
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-2 text-blue-700">VLOOKUP 的基本概念</h3>
+          <p class="mb-2">想像你有一張學生成績表，你知道學生的姓名，想找出他的成績。VLOOKUP 可以根據學生姓名（你已知的資訊）查找對應的成績（你想知道的資訊）。</p>
+          
+          <div class="bg-gray-50 p-3 rounded mb-3 font-mono border-l-4 border-blue-500">
+            =VLOOKUP(查找值, 表格範圍, 列號, [是否模糊匹配])
+          </div>
+          
+          <div class="mb-3">
+            <p class="font-bold mb-1">參數解釋：</p>
+            <div class="bg-gray-50 p-3 rounded">
+              <ul class="space-y-1 list-disc ml-4">
+                <li><span class="font-bold text-blue-700">查找值：</span> 你已知的資訊（例如學生姓名「小明」）</li>
+                <li><span class="font-bold text-blue-700">表格範圍：</span> 包含所有資料的表格（必須把已知資訊放在第一列）</li>
+                <li><span class="font-bold text-blue-700">列號：</span> 你想獲取的資訊在第幾列（從左數起，第一列為1）</li>
+                <li><span class="font-bold text-blue-700">是否模糊匹配：</span> TRUE 表示近似匹配，FALSE 表示精確匹配（建議初學者使用 FALSE）</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-2 text-blue-700">實際案例：學生成績查詢</h3>
+          <p class="mb-2">假設我們有一張表格，A1:C5 包含以下資料：</p>
+          
+          <table class="border-collapse w-full mb-3 bg-gray-50">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="border border-gray-300 p-2 text-left">學生姓名</th>
+                <th class="border border-gray-300 p-2 text-left">數學成績</th>
+                <th class="border border-gray-300 p-2 text-left">英語成績</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="border border-gray-300 p-2">小明</td>
+                <td class="border border-gray-300 p-2">85</td>
+                <td class="border border-gray-300 p-2">92</td>
+              </tr>
+              <tr>
+                <td class="border border-gray-300 p-2">小花</td>
+                <td class="border border-gray-300 p-2">90</td>
+                <td class="border border-gray-300 p-2">88</td>
+              </tr>
+              <tr>
+                <td class="border border-gray-300 p-2">小華</td>
+                <td class="border border-gray-300 p-2">78</td>
+                <td class="border border-gray-300 p-2">95</td>
+              </tr>
+              <tr>
+                <td class="border border-gray-300 p-2">小強</td>
+                <td class="border border-gray-300 p-2">95</td>
+                <td class="border border-gray-300 p-2">80</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="mb-3">
+            <p class="font-bold mb-1">如果我想查找「小華」的英語成績：</p>
+            <div class="bg-gray-50 p-3 rounded">
+              <p class="font-mono text-blue-600">=VLOOKUP("小華", $A$1:$C$5, 3, FALSE)</p>
+              <p class="mt-1">結果：95（「小華」的英語成績）</p>
+            </div>
+          </div>
+          
+          <p class="mb-2">在這個公式中：</p>
+          <div class="bg-gray-50 p-3 rounded">
+            <ul class="list-disc ml-4 space-y-1">
+              <li>"小華" 是我們要查找的值</li>
+              <li>A1:C5 是整個表格的範圍</li>
+              <li>3 表示我們要返回第3列的值（英語成績）</li>
+              <li>FALSE 表示我們要精確匹配"小華"</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mb-6 bg-gray-50 p-4">
+          <p class="mb-2">⚠️ <span class="font-bold">初學者注意事項：</span></p>
+          <ul class="list-disc ml-6 space-y-1">
+            <li>查找範圍的<span class="font-bold text-red-500">第一列</span>必須包含你要查找的值</li>
+            <li>建議使用 FALSE 進行精確匹配，避免意外的錯誤</li>
+            <li>如果找不到匹配的值，會返回 #N/A 錯誤</li>
+            <li>VLOOKUP 只能從左到右查找，不能從右到左</li>
+          </ul>
+        </div>
+        
+        <div class="mb-4 bg-gray-50 p-4">
+          <p class="mb-2">💡 <span class="font-bold">實用小提示：</span></p>
+          <p>可以用 IFERROR 函數結合 VLOOKUP，當找不到匹配時顯示友好訊息：</p>
+          <p class="font-mono mt-1">=IFERROR(VLOOKUP("小明", A1:C5, 2, FALSE), "未找到資料")</p>
+        </div>
+      </div>
+    `,
+  },
+  {
     lesson_id: getLessonId(5),
     number: 5,
     title: "綜合測驗",
@@ -506,4 +506,4 @@ export const lessons: Lesson[] = [
     showGame: true,
     isFinal: true,
   }
-] 
+]

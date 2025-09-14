@@ -44,6 +44,7 @@ export interface LessonOrderMapping {
   mapping: {
     number: number;
     lesson_id: string;
+    genially_link?: string;
   }[];
 }
 
@@ -314,7 +315,8 @@ export async function getLessonOrderMappings(): Promise<LessonOrderMapping[]> {
         const validMapping = Array.isArray(mapping) 
           ? mapping.map(m => ({
               number: typeof m.number === 'string' ? parseInt(m.number, 10) : m.number,
-              lesson_id: m.lesson_id
+              lesson_id: m.lesson_id,
+              genially_link: m.genially_link
             }))
           : [];
         
@@ -465,4 +467,48 @@ export async function getLearningRecordId(studentId: string, lessonId: string): 
     console.error('Error in getLearningRecordId:', error instanceof Error ? error.message : JSON.stringify(error));
     return null;
   }
-} 
+}
+
+// Function to get Genially link for a specific lesson
+export async function getGeniallyLink(lessonId: string): Promise<string | null> {
+  try {
+    // 直接從 lessons 資料表中獲取指定 lesson ID 的 genially_link
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('genially_link')
+      .eq('id', lessonId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching Genially link:', error.message || JSON.stringify(error));
+      return null;
+    }
+    
+    // 返回找到的連結或 null
+    return data?.genially_link || null;
+  } catch (error) {
+    console.error('Error getting Genially link:', error instanceof Error ? error.message : JSON.stringify(error));
+    return null;
+  }
+}
+
+// Function to get all Genially links for all lessons
+export async function getAllGeniallyLinks(): Promise<Map<string, string>> {
+  try {
+    const mappingsData = await getLessonOrderMappings();
+    const geniallyLinks = new Map<string, string>();
+    
+    if (mappingsData.length > 0 && mappingsData[0].mapping && mappingsData[0].mapping.length > 0) {
+      mappingsData[0].mapping.forEach(m => {
+        if (m.lesson_id && m.genially_link) {
+          geniallyLinks.set(m.lesson_id, m.genially_link);
+        }
+      });
+    }
+    
+    return geniallyLinks;
+  } catch (error) {
+    console.error('Error getting all Genially links:', error instanceof Error ? error.message : JSON.stringify(error));
+    return new Map<string, string>();
+  }
+}

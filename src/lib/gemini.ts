@@ -76,7 +76,7 @@ const SYSTEM_PROMPT = `
 // 全局變數來保存 GoogleGenAI 實例
 let genAI: GoogleGenAI | null = null;
 // 使用最新的 Gemini 2.5 Flash Preview 模型
-const MODEL_NAME = 'gemini-2.0-flash';
+const MODEL_NAME = 'gemini-2.5-flash';
 
 // 驗證 API key 格式
 function isValidApiKey(apiKey: string): boolean {
@@ -205,6 +205,8 @@ export async function getChatResponse(message: string, context?: ChatContext, im
         return '# 錯誤：權限不足\n\n> 抱歉，目前沒有權限使用此 AI 模型。請聯繫系統管理員確認 API 金鑰權限。';
       } else if (error.message.includes('image')) {
         return '# 錯誤：圖片處理錯誤\n\n> 抱歉，上傳的圖片無法被處理。請確保圖片格式正確且檔案大小合適。';
+      } else if (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED') || error.message.includes('quota') || error.message.includes('rate limit')) {
+        return '# 使用量超額\n\n> 抱歉，我們已經達到了 Google AI 的使用額度限制。請稍後再試，或聯繫系統管理員升級 API 配額。\n\n您仍然可以繼續使用本系統的其他功能。';
       }
     }
     return '# 系統錯誤\n\n> 抱歉，我現在無法回應。請稍後再試。';

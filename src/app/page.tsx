@@ -8,7 +8,7 @@ import { getProgress, resetProgress } from '@/lib/progress'
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
-import { getLeaderboardStats, getPlayerRank, getLessonOrderMappings } from '@/lib/supabase'
+import { getLeaderboardStats, getPlayerRank, getLessonOrderMappings, getAllGeniallyLinks } from '@/lib/supabase'
 import { UserProgress, Lesson } from '@/types/lesson'
 
 interface ProgressData {

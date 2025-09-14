@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { State, type ChatMessage } from '@/types/lesson'
 import { getProgress, updateLessonProgress } from '@/lib/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats, supabase } from '@/lib/supabase'
+import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboardStats, supabase, getGeniallyLink } from '@/lib/supabase'
 import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
@@ -162,10 +162,9 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                           ),
                           code: ({ children, className, node, ...props }) => {
                             const match = /language-(\w+)/.exec(className || '')
-                            const inline = !match
-                            return inline 
-                              ? <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
-                              : <code>{children}</code>
+                            return match 
+                              ? <pre className="p-4 bg-gray-100 rounded overflow-x-auto"><code className={className}>{children}</code></pre>
+                              : <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
                           }
                         }}
                       >
@@ -343,9 +342,9 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     // Direct mapping of lesson UUIDs to numbers
     const lessonMapping: {[key: string]: number} = {
       "a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c": 1, 
-      "b2c3d4e5-f6a7-58b9-ac0d-2e3f4a5b6c7d": 3, 
-      "c3d4e5f6-a7b8-69ca-bd1e-3f4a5b6c7d8e": 2, 
-      "d4e5f6a7-b8c9-7adb-ce2f-4a5b6c7d8e9f": 4, 
+      "b2c3d4e5-f6a7-58b9-ac0d-2e3f4a5b6c7d": 2, 
+      "d4e5f6a7-b8c9-7adb-ce2f-4a5b6c7d8e9f": 3, 
+      "c3d4e5f6-a7b8-69ca-bd1e-3f4a5b6c7d8e": 4, 
       "e5f6a7b8-c9da-8bec-df3a-5b6c7d8e9f0a": 5
     };
     
@@ -503,6 +502,28 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       setCurrentExplanation(exercisesData[0].explanation || '');
     }
   }, [exercisesData, lessonState.hasSubmitted]);
+
+  // 載入課程時獲取 Genially 連結 - 使用 useEffect 確保只在客戶端執行
+  useEffect(() => {
+    const fetchGeniallyLink = async () => {
+      try {
+        // 從 Supabase 獲取當前課程的 Genially 連結
+        const link = await getGeniallyLink(lessonState.currentLesson);
+        if (link) {
+          setGeniallyLink(link);
+          console.log('Fetched Genially link:', link);
+        } else {
+          setGeniallyLink(null);
+          console.log('No Genially link found for lesson');
+        }
+      } catch (error) {
+        console.error('Error fetching Genially link:', error);
+        setGeniallyLink(null);
+      }
+    };
+    
+    fetchGeniallyLink();
+  }, [lessonState.currentLesson]);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -1225,11 +1246,10 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                             li: ({children}) => <li className="mb-1">{children}</li>,
                             code: ({ children, className, node, ...props }) => {
                               const match = /language-(\w+)/.exec(className || '')
-                              const inline = !match
-                              return inline 
-                                ? <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
-                                : <code>{children}</code>
-                            }
+                              return match 
+                                ? <pre className="p-4 bg-gray-100 rounded overflow-x-auto"><code className={className}>{children}</code></pre>
+                                : <code className="px-1 py-0.5 bg-gray-100 rounded text-blue-600">{children}</code>
+                          }
                           }}
                         >
                           {formatExplanation(currentExplanation)}
@@ -1336,6 +1356,9 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     );
   };
 
+  // 添加 geniallyLink 狀態來存儲連結
+  const [geniallyLink, setGeniallyLink] = useState<string | null>(null);
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       <header className="bg-white border-b sticky top-0 z-50">
@@ -1379,7 +1402,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               </div>
               <div className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-[#FFE5E5] rounded-xl">
                 <Flame className="h-4 w-4 md:h-5 md:w-5 text-[#FF4B4B]" />
-                <span className="font-semibold text-[#CC0000] text-xs md:text-base">{lessonState.streak} 天</span>
+                <span className="font-semibold text-[#CC0000] text-xs md:text-base">{lessonState.streak} 天</              span>
               </div>
             </div>
           </div>
@@ -1501,10 +1524,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                               height: '100%',
                               border: 'none'
                             }}
-                            src={getLessonNumber(lessonState.currentLesson) === 5 
-                              ? "https://view.genially.com/67e2a183f77fd165cdb44648"
-                              : "https://view.genially.com/67fb6e9177e4a8196ea4a50d"
-                            }
+                            src={geniallyLink}
                             allowFullScreen={true}
                           />
                         </div>
@@ -1650,42 +1670,39 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                           <p className="text-gray-700 mb-4">在這測驗中，您需要運用前面學習的所有函數知識來解決實際問題。</p>
                           <ul className="list-disc pl-6 mb-4 text-gray-700">
                             <li>運用 SUM、AVERAGE 函數進行數據統計</li>
-                        <li>使用 VLOOKUP 函數查找相關數據</li>
-                        <li>使用 IF 函數進行條件判斷</li>
-                        <li>創建樞紐分析表進行數據分析</li>
-                      </ul>
-                      <p className="text-blue-600 font-semibold">完成測驗後，您將獲得終極密碼！</p>
-                    </div>
-                      </div>
-                    </div>
-
-                    {/* 遊戲區塊 */}
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
-                        <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
-                          <iframe 
-                            title="Excel Learning"
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              border: 'none'
-                            }}
-                            src={getLessonNumber(lessonState.currentLesson) === 5 
-                              ? "https://view.genially.com/67e2a183f77fd165cdb44648"
-                              : "https://view.genially.com/67fb6e9177e4a8196ea4a50d"
-                            }
-                            allowFullScreen={true}
-                          />
+                            <li>使用 VLOOKUP 函數查找相關數據</li>
+                            <li>使用 IF 函數進行條件判斷</li>
+                            <li>創建樞紐分析表進行數據分析</li>
+                          </ul>
+                          <p className="text-blue-600 font-semibold">完成測驗後，您將獲得終極密碼！</p>
                         </div>
                       </div>
                     </div>
-
-                    {/* 答案輸入區塊 */}
-                    {renderFinalQuestion()}
                   </div>
+
+                  {/* 遊戲區塊 */}
+                  <div className="bg-gray-50 rounded-xl p-6">
+                    <div style={{width: '100%', margin: '0 auto', maxWidth: '1200px'}}>
+                      <div style={{position: 'relative', paddingBottom: '56.25%', paddingTop: 0, height: 0}}>
+                        <iframe 
+                          title="Excel Learning"
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            border: 'none'
+                          }}
+                          src={geniallyLink}
+                          allowFullScreen={true}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 答案輸入區塊 */}
+                  {renderFinalQuestion()}
                 </div>
               </Card>
             </TabsContent>
@@ -1992,4 +2009,4 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
       </Dialog>
     </div>
   )
-} 
+}
