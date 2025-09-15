@@ -2146,21 +2146,22 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
         {/* AI 助教切換按鈕 */}
         {!lessonState.showChat && (
-          <Button
-            onClick={toggleChat}
-            className="
-              fixed right-4 bottom-4 z-50
-              bg-[#2B4EFF] hover:bg-blue-700 text-white 
-              rounded-full w-12 h-12 md:w-14 md:h-14 shadow-lg 
-              flex items-center justify-center
-              transition-opacity duration-300
-            "
-          >
-            <MessageCircle className="h-5 w-5 md:h-6 md:w-6" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-[#FF4B4B] rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white">
+          <div className="fixed right-4 bottom-4 z-50">
+            <Button
+              onClick={toggleChat}
+              className="
+                bg-white hover:bg-gray-50 text-white 
+                rounded-full w-16 h-16 md:w-20 md:h-20 shadow-lg 
+                flex items-center justify-center overflow-hidden border-2 border-gray-200
+                transition-opacity duration-300
+              "
+            >
+              <RobotAvatar className="w-full h-full scale-110" />
+            </Button>
+            <span className="absolute -top-1 -right-1 w-6 h-6 md:w-7 md:h-7 bg-[#FF4B4B] rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg border-2 border-white">
               1
             </span>
-          </Button>
+          </div>
         )}
       </div>
 
