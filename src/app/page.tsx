@@ -158,7 +158,6 @@ export default function HomePage() {
     }
   }, [showLeaderboardDialog]);
 
-  const isStarted = progress.completedLessons.length > 0;
   const isCompleted = progress.completedLessons.length === lessons.length;
 
   const handleReset = () => {

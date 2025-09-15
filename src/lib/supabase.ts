@@ -184,7 +184,7 @@ export async function getPlayerRank(student_id: string): Promise<number> {
       }
       return map;
     }, new Map<string, ScoreRecord>())
-  ).map(([_, score]: [string, ScoreRecord]) => score);
+  ).map(([, score]: [string, ScoreRecord]) => score);
 
   // 按完成時間排序
   bestScores.sort((a: ScoreRecord, b: ScoreRecord) => a.completion_time_seconds - b.completion_time_seconds);

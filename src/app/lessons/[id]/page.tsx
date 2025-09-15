@@ -1,12 +1,13 @@
 "use client"
 
 import React, { useState, useEffect, useRef, use } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, Pencil, CheckCircle, XCircle, KeyRound, Image as ImageIcon, BookOpen, Zap } from 'lucide-react'
+import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, CheckCircle, XCircle, KeyRound, Image as ImageIcon, BookOpen, Zap } from 'lucide-react'
 import { lessons } from '@/data/lessons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -17,53 +18,9 @@ import { saveLearningRecord, saveLeaderboardEntry, getPlayerRank, getLeaderboard
 import { initializeGemini, getChatResponse } from '@/lib/gemini'
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm'
-import { ExcelMascot } from '@/components/ExcelMascot'
 import { RobotAvatar } from '@/components/RobotAvatar'
-import type { Components } from 'react-markdown'
-import { v4 as uuidv4 } from 'uuid'
 import { getLearningRecordId, getOrCreateQuestionCount, incrementQuestionCount, saveChatMessage } from '@/lib/supabase'
 
-const formatDataContent = (content: string) => {
-  // 檢查是否包含表格式數據
-  if (content.includes('|')) {
-    // 將內容分行處理
-    const lines = content.split('\n');
-    const formattedLines = [];
-    let isInTable = false;
-    
-    for (let line of lines) {
-      // 清理行內容
-      line = line.trim();
-      
-      // 跳過空行
-      if (!line) continue;
-      
-      // 檢查是否為表格行
-      if (line.includes('|')) {
-        // 清理表格行
-        line = line
-          .replace(/^\||\|$/g, '') // 移除開頭和結尾的 |
-          .split('|')
-          .map(cell => cell.trim()) // 清理每個單元格
-          .join(' | ');
-        
-        if (line) {
-          formattedLines.push('| ' + line + ' |');
-          isInTable = true;
-        }
-      } else {
-        if (isInTable) {
-          formattedLines.push(''); // 表格結束後加入空行
-          isInTable = false;
-        }
-        formattedLines.push(line);
-      }
-    }
-    
-    return formattedLines.join('\n');
-  }
-  return content;
-};
 
 const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: boolean; imageUrl?: string }) => {
   const [isTyping, setIsTyping] = useState(!isUser);
@@ -125,9 +82,11 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                     {/* 如果有圖片，顯示圖片 */}
                     {imageUrl && (
                       <div className="mb-3">
-                        <img
+                        <Image
                           src={imageUrl}
                           alt="Uploaded"
+                          width={400}
+                          height={300}
                           className="max-w-full rounded-lg"
                         />
                       </div>
@@ -137,57 +96,58 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                     ) : (
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         components={{
-                          h1: ({children}) => <h1 className="text-xl font-bold mb-4 text-blue-600">{children}</h1>,
-                          h2: ({children}) => <h2 className="text-lg font-semibold mb-3 mt-6">{children}</h2>,
-                          h3: ({children}) => <h3 className="text-md font-semibold mb-2 mt-4">{children}</h3>,
-                          h4: ({children}) => <h4 className="font-medium mb-2 mt-4">{children}</h4>,
-                          table: ({ children }) => (
+                          h1: ({children}: any) => <h1 className="text-xl font-bold mb-4 text-blue-600">{children}</h1>,
+                          h2: ({children}: any) => <h2 className="text-lg font-semibold mb-3 mt-6">{children}</h2>,
+                          h3: ({children}: any) => <h3 className="text-md font-semibold mb-2 mt-4">{children}</h3>,
+                          h4: ({children}: any) => <h4 className="font-medium mb-2 mt-4">{children}</h4>,
+                          table: ({ children }: any) => (
                             <div className="overflow-x-auto my-4">
                               <table className="min-w-full border-collapse border border-gray-300">
                                 {children}
                               </table>
                             </div>
                           ),
-                          th: ({ children }) => (
+                          th: ({ children }: any) => (
                             <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left">
                               {children}
                             </th>
                           ),
-                          td: ({ children }) => (
+                          td: ({ children }: any) => (
                             <td className="border border-gray-300 px-4 py-2">
                               {children}
                             </td>
                           ),
-                          p: ({ children }) => (
+                          p: ({ children }: any) => (
                             <p className="mb-4 last:mb-0 whitespace-pre-wrap">
                               {children}
                             </p>
                           ),
-                          ul: ({children}) => <ul className="list-disc pl-6 mb-4">{children}</ul>,
-                          ol: ({children}) => <ol className="list-decimal pl-6 mb-4">{children}</ol>,
-                          li: ({children}) => <li className="mb-1">{children}</li>,
-                          blockquote: ({children}) => {
+                          ul: ({children}: any) => <ul className="list-disc pl-6 mb-4">{children}</ul>,
+                          ol: ({children}: any) => <ol className="list-decimal pl-6 mb-4">{children}</ol>,
+                          li: ({children}: any) => <li className="mb-1">{children}</li>,
+                          blockquote: ({children}: any) => {
                             // 檢查內容是否包含特殊提示標記
                             const childrenArray = React.Children.toArray(children);
                             const firstChild = childrenArray[0];
                             
                             // 類型斷言和類型守衛
-                            const isReactElement = (obj: any): obj is React.ReactElement => {
+                            const isReactElement = (obj: unknown): obj is React.ReactElement => {
                               return obj !== null && typeof obj === 'object' && 'props' in obj;
                             };
 
                             // 檢查是否為警告提示
                             if (isReactElement(firstChild) && 
-                                firstChild.props?.children) {
+                                (firstChild.props as any)?.children) {
                               // 將子元素轉換為字符串，但先確保它是可以toString()的類型
-                              const childContent = String(firstChild.props.children);
+                              const childContent = String((firstChild.props as any).children);
                               if (childContent.includes('⚠️ **Warning:**')) {
                                 return (
                                   <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-4 rounded-r">
                                     <div className="flex">
                                       <div className="flex-shrink-0 text-amber-500">⚠️</div>
-                                      <div className="ml-3 text-amber-700">{children}</div>
+                                      <div className="ml-3 text-amber-700">{children as React.ReactNode}</div>
                                     </div>
                                   </div>
                                 );
@@ -196,15 +156,15 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                             
                             // 檢查是否為提示
                             if (isReactElement(firstChild) && 
-                                firstChild.props?.children) {
+                                (firstChild.props as any)?.children) {
                               // 將子元素轉換為字符串，但先確保它是可以toString()的類型
-                              const childContent = String(firstChild.props.children);
+                              const childContent = String((firstChild.props as any).children);
                               if (childContent.includes('💡 **Tip:**')) {
                                 return (
                                   <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-r">
                                     <div className="flex">
                                       <div className="flex-shrink-0 text-blue-500">💡</div>
-                                      <div className="ml-3 text-blue-700">{children}</div>
+                                      <div className="ml-3 text-blue-700">{children as React.ReactNode}</div>
                                     </div>
                                   </div>
                                 );
@@ -213,14 +173,14 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                             
                             // 檢查是否為注意事項
                             if (isReactElement(firstChild) && 
-                                firstChild.props?.children) {
+                                (firstChild.props as any)?.children) {
                               // 將子元素轉換為字符串，但先確保它是可以toString()的類型
-                              const childContent = String(firstChild.props.children);
+                              const childContent = String((firstChild.props as any).children);
                               if (childContent.includes('**Note:**')) {
                                 return (
                                   <div className="bg-gray-50 border-l-4 border-gray-500 p-4 mb-4 rounded-r">
                                     <div className="flex">
-                                      <div className="ml-3 text-gray-700">{children}</div>
+                                      <div className="ml-3 text-gray-700">{children as React.ReactNode}</div>
                                     </div>
                                   </div>
                                 );
@@ -230,11 +190,11 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
                             // 默認引用塊樣式
                             return (
                               <blockquote className="border-l-4 border-gray-300 pl-4 py-1 mb-4 italic text-gray-700">
-                                {children}
+                                {children as React.ReactNode}
                               </blockquote>
                             );
                           },
-                          code: ({ children, className, node, ...rest }) => {
+                          code: ({ children, className }) => {
                             const match = /language-(\w+)/.exec(className || '')
                             if (match) {
                               return (
@@ -263,9 +223,11 @@ const ChatMessage = ({ message, isUser, imageUrl }: { message: string; isUser: b
             {/* 如果用戶訊息有圖片，也顯示圖片 */}
             {imageUrl && (
               <div className="mb-2 max-w-xs md:max-w-sm">
-                <img
+                <Image
                   src={imageUrl}
                   alt="Uploaded"
+                  width={300}
+                  height={200}
                   className="w-full rounded-lg object-contain"
                 />
               </div>
@@ -578,7 +540,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     // Call the fetchExercisesAndProgress function
     fetchExercisesAndProgress(currentLessonId);
     
-  }, [resolvedParams.id, showRewardDialog, exercisesData.length]);
+  }, [resolvedParams.id, showRewardDialog, exercisesData.length, fetchExercisesAndProgress]);
 
   // Add an extra effect to update explanation when exercises data changes
   useEffect(() => {
@@ -1646,57 +1608,58 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                         {lessonMarkdown ? (
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             components={{
-                              h1: ({children}) => <h1 className="text-3xl font-bold mb-6 text-blue-600">{children}</h1>,
-                              h2: ({children}) => <h2 className="text-2xl font-semibold mb-4 mt-8 text-blue-600">{children}</h2>,
-                              h3: ({children}) => <h3 className="text-xl font-semibold mb-3 mt-6">{children}</h3>,
-                              h4: ({children}) => <h4 className="text-lg font-medium mb-2 mt-4">{children}</h4>,
-                              table: ({ children }) => (
+                              h1: ({children}: any) => <h1 className="text-3xl font-bold mb-6 text-blue-600">{children}</h1>,
+                              h2: ({children}: any) => <h2 className="text-2xl font-semibold mb-4 mt-8 text-blue-600">{children}</h2>,
+                              h3: ({children}: any) => <h3 className="text-xl font-semibold mb-3 mt-6">{children}</h3>,
+                              h4: ({children}: any) => <h4 className="text-lg font-medium mb-2 mt-4">{children}</h4>,
+                              table: ({ children }: any) => (
                                 <div className="overflow-x-auto my-4">
                                   <table className="min-w-full border-collapse border border-gray-300">
                                     {children}
                                   </table>
                                 </div>
                               ),
-                              th: ({ children }) => (
+                              th: ({ children }: any) => (
                                 <th className="border border-gray-300 bg-gray-100 px-4 py-2 text-left">
                                   {children}
                                 </th>
                               ),
-                              td: ({ children }) => (
+                              td: ({ children }: any) => (
                                 <td className="border border-gray-300 px-4 py-2">
                                   {children}
                                 </td>
                               ),
-                              p: ({ children }) => (
+                              p: ({ children }: any) => (
                                 <p className="mb-4 last:mb-0 whitespace-pre-wrap">
                                   {children}
                                 </p>
                               ),
-                              ul: ({children}) => <ul className="list-disc pl-6 mb-4">{children}</ul>,
-                              ol: ({children}) => <ol className="list-decimal pl-6 mb-4">{children}</ol>,
-                              li: ({children}) => <li className="mb-1">{children}</li>,
-                              blockquote: ({children}) => {
+                              ul: ({children}: any) => <ul className="list-disc pl-6 mb-4">{children}</ul>,
+                              ol: ({children}: any) => <ol className="list-decimal pl-6 mb-4">{children}</ol>,
+                              li: ({children}: any) => <li className="mb-1">{children}</li>,
+                              blockquote: ({children}: any) => {
                                 // 檢查內容是否包含特殊提示標記
                                 const childrenArray = React.Children.toArray(children);
                                 const firstChild = childrenArray[0];
                                 
                                 // 類型斷言和類型守衛
-                                const isReactElement = (obj: any): obj is React.ReactElement => {
+                                const isReactElement = (obj: unknown): obj is React.ReactElement => {
                                   return obj !== null && typeof obj === 'object' && 'props' in obj;
                                 };
 
                                 // 檢查是否為警告提示
                                 if (isReactElement(firstChild) && 
-                                    firstChild.props?.children) {
+                                    (firstChild.props as any)?.children) {
                                   // 將子元素轉換為字符串，但先確保它是可以toString()的類型
-                                  const childContent = String(firstChild.props.children);
+                                  const childContent = String((firstChild.props as any).children);
                                   if (childContent.includes('⚠️ **Warning:**')) {
                                     return (
                                       <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-4 rounded-r">
                                         <div className="flex">
                                           <div className="flex-shrink-0 text-amber-500">⚠️</div>
-                                          <div className="ml-3 text-amber-700">{children}</div>
+                                          <div className="ml-3 text-amber-700">{children as React.ReactNode}</div>
                                         </div>
                                       </div>
                                     );
@@ -1705,15 +1668,15 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                                 
                                 // 檢查是否為提示
                                 if (isReactElement(firstChild) && 
-                                    firstChild.props?.children) {
+                                    (firstChild.props as any)?.children) {
                                   // 將子元素轉換為字符串，但先確保它是可以toString()的類型
-                                  const childContent = String(firstChild.props.children);
+                                  const childContent = String((firstChild.props as any).children);
                                   if (childContent.includes('💡 **Tip:**')) {
                                     return (
                                       <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-r">
                                         <div className="flex">
                                           <div className="flex-shrink-0 text-blue-500">💡</div>
-                                          <div className="ml-3 text-blue-700">{children}</div>
+                                          <div className="ml-3 text-blue-700">{children as React.ReactNode}</div>
                                         </div>
                                       </div>
                                     );
@@ -1722,14 +1685,14 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                                 
                                 // 檢查是否為注意事項
                                 if (isReactElement(firstChild) && 
-                                    firstChild.props?.children) {
+                                    (firstChild.props as any)?.children) {
                                   // 將子元素轉換為字符串，但先確保它是可以toString()的類型
-                                  const childContent = String(firstChild.props.children);
+                                  const childContent = String((firstChild.props as any).children);
                                   if (childContent.includes('**Note:**')) {
                                     return (
                                       <div className="bg-gray-50 border-l-4 border-gray-500 p-4 mb-4 rounded-r">
                                         <div className="flex">
-                                          <div className="ml-3 text-gray-700">{children}</div>
+                                          <div className="ml-3 text-gray-700">{children as React.ReactNode}</div>
                                         </div>
                                       </div>
                                     );
@@ -1739,23 +1702,23 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                                 // 默認引用塊樣式
                                 return (
                                   <blockquote className="border-l-4 border-gray-300 pl-4 py-1 mb-4 italic text-gray-700">
-                                    {children}
+                                    {children as React.ReactNode}
                                   </blockquote>
                                 );
                               },
-                              code: ({ children, className, node, ...rest }) => {
-                                const match = /language-(\w+)/.exec(className || '')
-                                if (match) {
-                                  return (
-                                    <div className="my-6 border-l-4 border-blue-500">
-                                      <pre className="pl-4 py-4 bg-blue-50 overflow-x-auto text-gray-800 font-mono text-sm">
-                                        <code className={className}>{children}</code>
-                                      </pre>
-                                    </div>
-                                  )
-                                }
-                                return <code className="px-1.5 py-0.5 bg-blue-50 rounded text-blue-600 font-mono text-sm">{children}</code>
+                            code: ({ children, className }) => {
+                              const match = /language-(\w+)/.exec(className || '')
+                              if (match) {
+                                return (
+                                  <div className="my-6 border-l-4 border-blue-500">
+                                    <pre className="pl-4 py-4 bg-blue-50 overflow-x-auto text-gray-800 font-mono text-sm">
+                                      <code className={className}>{children}</code>
+                                    </pre>
+                                  </div>
+                                )
                               }
+                              return <code className="px-1.5 py-0.5 bg-blue-50 rounded text-blue-600 font-mono text-sm">{children}</code>
+                            }
                             }}
                           >
                             {lessonMarkdown}
@@ -2087,13 +2050,15 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
             <div className="p-6 border-t bg-white">
               {/* 圖片預覽區域 */}
               {imagePreview && (
-                <div className="max-w-3xl mx-auto mb-4 relative">
-                  <div className="border rounded-xl p-2 overflow-hidden">
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      className="max-h-48 rounded mx-auto object-contain"
-                    />
+                  <div className="max-w-3xl mx-auto mb-4 relative">
+                    <div className="border rounded-xl p-2 overflow-hidden">
+                      <Image 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        width={400}
+                        height={200}
+                        className="max-h-48 rounded mx-auto object-contain"
+                      />
                     <button 
                       onClick={handleCancelImage}
                       className="absolute top-2 right-2 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-70"
