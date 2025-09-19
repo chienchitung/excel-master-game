@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, use } from "react"
+import React, { useState, useEffect, useRef, use, useCallback } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -412,8 +412,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     return lessons.find(lesson => lesson.number === currentNumber - 1)?.lesson_id || null;
   };
 
-  // Define the function outside useEffect to fix the strict mode error
-  const fetchExercisesAndProgress = async (currentLessonId: string) => {
+  // Define the function with useCallback to avoid redefining on every render
+  const fetchExercisesAndProgress = useCallback(async (currentLessonId: string) => {
     try {
       // 每次加載課程時都重置答案嘗試次數為0
       setAnswerAttempts(0);
@@ -479,7 +479,8 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         completedLessons: progress.completedLessons,
         hasSubmitted: isLessonCompleted,
         isCorrect: isLessonCompleted,
-        answer: isLessonCompleted ? (prev.answer || "") : "",
+        // 僅在切換課程時重置答案，避免輸入時被清空
+        answer: prev.currentLesson !== currentLessonId ? "" : prev.answer,
         exp: progress.exp,
         level: progress.level,
         dailyProgress: progress.dailyProgress,
@@ -521,7 +522,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     } catch (error) {
       console.error('Error in fetchExercisesAndProgress:', error instanceof Error ? error.message : JSON.stringify(error));
     }
-  };
+  }, [showRewardDialog]);
 
   useEffect(() => {
     // Initialize student ID and name if not already set
@@ -540,7 +541,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     // Call the fetchExercisesAndProgress function
     fetchExercisesAndProgress(currentLessonId);
     
-  }, [resolvedParams.id, showRewardDialog, exercisesData.length, fetchExercisesAndProgress]);
+  }, [resolvedParams.id, showRewardDialog, fetchExercisesAndProgress]);
 
   // Add an extra effect to update explanation when exercises data changes
   useEffect(() => {
@@ -609,6 +610,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   ]);
 
   const [chatInput, setChatInput] = useState('');
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
   const tabsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -1025,7 +1027,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     setChatInput('');
     
     // 重置輸入框高度為固定值
-    const textarea = document.querySelector('textarea');
+    const textarea = chatInputRef.current;
     if (textarea) {
       textarea.style.height = '4rem';
     }
@@ -1195,6 +1197,18 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     }
+  };
+
+  // 插入預設問題到輸入框
+  const handleInsertPreset = (text: string) => {
+    setChatInput(prev => (prev ? prev + '\n' + text : text));
+    requestAnimationFrame(() => {
+      if (chatInputRef.current) {
+        chatInputRef.current.focus();
+        chatInputRef.current.style.height = '4rem';
+        chatInputRef.current.style.height = `${chatInputRef.current.scrollHeight}px`;
+      }
+    });
   };
 
   // 添加一個儲存暫存聊天記錄到 Supabase 的函數
@@ -1442,6 +1456,16 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
   // 增加內容加載狀態
   const [contentLoading, setContentLoading] = useState(true);
+
+  // 預設提問模板
+  const presetQuestions: string[] = [
+    '我不確定應該用哪個函數來解這題，能一步一步引導我嗎？',
+    '請用生活化的例子解釋一下 VLOOKUP 的用途與限制。',
+    '我寫了這個公式但結果怪怪的，可以幫我檢查嗎：=VLOOKUP( , , , )',
+    '如果我要同時根據兩個條件做查找，應該怎麼做？',
+    '能給我 3 個練習題，從簡單到中等，再附上解答嗎？',
+    '請把剛剛的重點整理成 5 行筆記，便於我複習。'
+  ];
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
@@ -2069,6 +2093,23 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 </div>
               )}
               
+              {/* 預設提問模板 */}
+              <div className="max-w-3xl mx-auto mb-3">
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {presetQuestions.map((q, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleInsertPreset(q)}
+                      className="whitespace-nowrap px-3 py-1.5 text-xs md:text-sm border rounded-full bg-gray-50 hover:bg-gray-100 text-gray-700"
+                      title={q}
+                    >
+                      {q.length > 18 ? q.slice(0, 18) + '…' : q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex items-center gap-3 max-w-3xl mx-auto">
                 {/* 圖片上傳按鈕 */}
                 <input
@@ -2090,6 +2131,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 <textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
+                  ref={chatInputRef}
                   onInput={(e) => {
                     e.currentTarget.style.height = '4rem';
                     e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
