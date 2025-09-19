@@ -220,7 +220,7 @@ export default function HomePage() {
         .replace('Z', '+08:00');
 
       // 清除之前的任何課程開始時間記錄
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 0; i <= 5; i++) {
         localStorage.removeItem(`lesson_${i}_start_time`);
       }
       
@@ -230,8 +230,8 @@ export default function HomePage() {
       console.log('Setting global start_time on student ID submission:', startTime);
       setHasStudentId(true);
       
-      // 直接導航到第一個課程
-      const firstLesson = mappedLessons.find(lesson => lesson.number === 1);
+      // 直接導航到前導課程（0），若不存在則到第一關
+      const firstLesson = mappedLessons.find(lesson => lesson.number === 0) || mappedLessons.find(lesson => lesson.number === 1);
       if (firstLesson) {
         router.push(`/lessons/${firstLesson.lesson_id}`);
       } else {
@@ -441,7 +441,17 @@ export default function HomePage() {
                   <div className="space-y-4">
                     {mappedLessons.map((lesson, index) => {
                       const isCompleted = progress.completedLessons.includes(lesson.lesson_id);
-                      const isLocked = !hasStudentId || (index > 0 && !progress.completedLessons.includes(mappedLessons[index - 1].lesson_id));
+                      const prevLesson = index > 0 ? mappedLessons[index - 1] : null;
+                      // 鎖定規則：
+                      // - 必須已輸入學號姓名
+                      // - 前導課程（0）在有學號後永遠可進
+                      // - 其他關卡需「上一關已完成」才解鎖
+                      const canEnter = hasStudentId && (
+                        lesson.number === 0 || (
+                          !!prevLesson && progress.completedLessons.includes(prevLesson.lesson_id)
+                        )
+                      );
+                      const isLocked = !canEnter;
 
                       return (
                         <div key={lesson.lesson_id} className="relative">
@@ -489,7 +499,19 @@ export default function HomePage() {
                                             ? 'bg-[#58CC02] text-white'
                                             : 'bg-[#2B4EFF] text-white'}
                                       `}>
-                                        {isCompleted ? (
+                                        {lesson.number === 0 ? (
+                                          isCompleted ? (
+                                            <>
+                                              <span className="text-sm font-medium">完成課程</span>
+                                              <ChevronRight className="h-4 w-4" />
+                                            </>
+                                          ) : (
+                                            <>
+                                              <span className="text-sm font-medium">開始學習</span>
+                                              <ChevronRight className="h-4 w-4" />
+                                            </>
+                                          )
+                                        ) : isCompleted ? (
                                           <>
                                             <Star className="h-4 w-4 fill-current" />
                                             <span className="text-sm font-medium">10</span>

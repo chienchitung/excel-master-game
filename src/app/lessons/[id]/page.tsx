@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, CheckCircle, XCircle, KeyRound, Image as ImageIcon, BookOpen, Zap } from 'lucide-react'
+import { Star, MessageCircle, ChevronRight, ChevronLeft, FileSpreadsheet, Trophy, Flame, X, Gift, CheckCircle, XCircle, KeyRound, Image as ImageIcon, Zap } from 'lucide-react'
 import { lessons } from '@/data/lessons'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -408,7 +408,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   // 修改 getPrevLessonId 函數
   const getPrevLessonId = (currentId: string): string | null => {
     const currentNumber = getLessonNumber(currentId);
-    if (currentNumber <= 1) return null;
+    if (currentNumber <= 0) return null;
     return lessons.find(lesson => lesson.number === currentNumber - 1)?.lesson_id || null;
   };
 
@@ -650,6 +650,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     saveInitialMessage();
   }, [lessonState.currentLesson]);
 
+  const geminiReadyRef = useRef(false);
   useEffect(() => {
     // Initialize Gemini API with your API key
     const initializeAI = async () => {
@@ -661,8 +662,10 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
       try {
         await initializeGemini(apiKey);
+        geminiReadyRef.current = true;
       } catch (error) {
         console.error('Failed to initialize Gemini API:', error);
+        geminiReadyRef.current = false;
         // 可以在這裡添加錯誤提示 UI
       }
     };
@@ -952,6 +955,20 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     }
   };
 
+  // 前導課程完成處理（不給星星與經驗值）
+  const handlePreludeComplete = () => {
+    // 標記為完成但不增加星星/XP
+    updateLessonProgress(lessonState.currentLesson, 0, 0);
+    setLessonState(prev => ({
+      ...prev,
+      hasSubmitted: true,
+      isCorrect: true,
+      completedLessons: Array.from(new Set([...(prev.completedLessons || []), prev.currentLesson]))
+    }));
+    // 直接前往下一關
+    handleNextLesson();
+  };
+
   const handleAnswerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLessonState(prev => ({
       ...prev,
@@ -976,7 +993,9 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
     setIsExpanded(!isExpanded);
   };
 
-  const showTabs = getLessonNumber(lessonState.currentLesson) === 5 ? ['game'] : ['practice', 'content'];
+  // 前導課程（編號 0）僅顯示內容；第 5 關顯示遊戲；其他顯示內容+挑戰
+  const lessonNumber = getLessonNumber(lessonState.currentLesson);
+  const showTabs = lessonNumber === 5 ? ['game'] : lessonNumber === 0 ? ['content'] : ['practice', 'content'];
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -1014,6 +1033,40 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
   const handleSendMessage = async () => {
     const hasContent = chatInput.trim() || imagePreview;
     if (!hasContent) return;
+
+    // 確保在送出訊息前，Gemini 已初始化（避免尚未完成初始化就呼叫）
+    if (!geminiReadyRef.current) {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      if (apiKey) {
+        try {
+          await initializeGemini(apiKey);
+          geminiReadyRef.current = true;
+        } catch (e) {
+          console.error('Failed to lazily initialize Gemini before sending message:', e);
+          setChatMessages(prev => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              content: '抱歉，AI 助教尚未啟用，請稍後再試或檢查 API 金鑰設定。',
+              isUser: false,
+              timestamp: new Date()
+            }
+          ]);
+          return;
+        }
+      } else {
+        setChatMessages(prev => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            content: '抱歉，尚未設定 Gemini API 金鑰（NEXT_PUBLIC_GEMINI_API_KEY）。',
+            isUser: false,
+            timestamp: new Date()
+          }
+        ]);
+        return;
+      }
+    }
     
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -1545,14 +1598,15 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
               </Link>
               <div className="h-4 w-px bg-gray-200" />
               <Badge variant="outline" className="bg-blue-600 text-white border-0 text-sm md:text-base">
-                第 {getLessonNumber(lessonState.currentLesson)} 關
+                {lessonNumber === 0 ? '前導課程' : `第 ${lessonNumber} 關`}
               </Badge>
             </div>
             <h1 className="text-xl md:text-2xl font-bold mb-2">{currentLesson?.title}</h1>
             <p className="text-sm md:text-base text-gray-600">{currentLesson?.description}</p>
           </div>
 
-          <Tabs ref={tabsRef} defaultValue={getLessonNumber(lessonState.currentLesson) === 5 ? 'game' : 'content'} className="mb-6 md:mb-8">
+          <Tabs ref={tabsRef} defaultValue={lessonNumber === 5 ? 'game' : 'content'} className="mb-6 md:mb-8">
+            {lessonNumber !== 0 && (
             <TabsList className="grid w-full gap-2 border-b border-gray-100 mb-2" style={{ gridTemplateColumns: `repeat(${showTabs.length}, 1fr)` }}>
               {showTabs.includes('content') && (
                 <TabsTrigger
@@ -1567,7 +1621,6 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                     focus:outline-none
                   `}
                 >
-                  <BookOpen className="w-5 h-5" />
                   課程內容
                 </TabsTrigger>
               )}
@@ -1606,6 +1659,7 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
                 </TabsTrigger>
               )}
             </TabsList>
+            )}
             
             {showTabs.includes('content') && (
               <TabsContent value="content">
@@ -1967,41 +2021,53 @@ export default function ExcelLearningPlatform({ params }: { params: Promise<{ id
 
           <div className="flex justify-between items-center">
             <div>
-              {getLessonNumber(lessonState.currentLesson) === 1 ? (
-                <Link href="/">
+              {lessonNumber === 0 ? null : (
+                lessonNumber === 1 ? (
                   <Button 
                     variant="outline" 
                     className="flex items-center gap-2 text-sm md:text-base"
+                    onClick={handlePrevLesson}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    回到首頁
+                    上一關
                   </Button>
-                </Link>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-2 text-sm md:text-base"
-                  onClick={handlePrevLesson}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  上一關
-                </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2 text-sm md:text-base"
+                    onClick={handlePrevLesson}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    上一關
+                  </Button>
+                )
               )}
             </div>
             <div className="flex-1">
-              {getLessonNumber(lessonState.currentLesson) !== 5 && (
+              {lessonNumber === 0 ? (
                 <Button 
-                  className={`flex items-center gap-2 ml-auto text-sm md:text-base ${
-                    lessonState.completedLessons.includes(lessonState.currentLesson)
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-blue-300 text-white cursor-not-allowed'
-                  }`}
-                  onClick={handleNextLesson}
-                  disabled={!lessonState.completedLessons.includes(lessonState.currentLesson)}
+                  className="w-full py-4 md:py-5 text-base md:text-lg font-semibold rounded-xl shadow-md bg-[#58CC02] hover:bg-[#46a001] text-white flex items-center justify-center gap-2"
+                  onClick={handlePreludeComplete}
+                  aria-label="完成課程，前往下一關"
                 >
-                  下一關
-                  <ChevronRight className="h-4 w-4" />
+                  完成課程
+                  <ChevronRight className="h-5 w-5" />
                 </Button>
+              ) : (
+                lessonNumber !== 5 && (
+                  <Button 
+                    className={`flex items-center gap-2 ml-auto text-sm md:text-base ${
+                      lessonState.completedLessons.includes(lessonState.currentLesson)
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-300 text-white cursor-not-allowed'
+                    }`}
+                    onClick={handleNextLesson}
+                    disabled={!lessonState.completedLessons.includes(lessonState.currentLesson)}
+                  >
+                    下一關
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )
               )}
             </div>
           </div>

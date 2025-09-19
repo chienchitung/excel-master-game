@@ -96,14 +96,8 @@ export async function initializeGemini(apiKey: string): Promise<void> {
   try {
     // 初始化 GoogleGenAI 客戶端
     genAI = new GoogleGenAI({ apiKey });
-    
-    // 進行一個簡單的測試呼叫以確認 API 可以正常工作
-    await genAI.models.generateContent({
-      model: MODEL_NAME,
-      contents: 'test',
-    });
-    
-    console.log('Gemini API initialized successfully');
+    // 不再在初始化時呼叫模型，避免因服務忙碌(503)而中斷初始化
+    console.log('Gemini API client configured');
   } catch (error) {
     console.error('Failed to initialize Gemini API:', error);
     genAI = null; // 確保失敗時清除
@@ -121,8 +115,8 @@ interface ChatContext {
 
 export async function getChatResponse(message: string, context?: ChatContext, image?: string): Promise<string> {
   if (!genAI) {
-    console.error('Gemini API not initialized');
-    return '# 系統錯誤\n\n> 抱歉，AI 助教目前無法使用。請確認系統設定是否正確。';
+    console.error('Gemini API not initialized. Make sure to call initializeGemini(apiKey) with a valid key.');
+    return '# 服務尚未啟用：Gemini\n\n> 抱歉，目前無法使用 AI 助教。\n\n**可能原因**\n- 未設定或設定了無效的 API 金鑰（需以 "AIza" 開頭）\n- 伺服器暫時無法連線\n\n**處理方式**\n1. 前往系統設定貼上有效的 Gemini API 金鑰\n2. 重新整理頁面後再試一次';
   }
 
   try {
@@ -149,41 +143,58 @@ export async function getChatResponse(message: string, context?: ChatContext, im
     console.log('Sending message to API...');
     
     let result;
-    
-    // 如果有圖片，使用多模態內容
-    if (image) {
-      console.log('Processing image with message');
-      // 檢查圖片格式
-      if (!image.startsWith('data:image/')) {
-        return '# 錯誤：圖片格式不正確\n\n> 抱歉，只支援 base64 編碼的圖片格式。';
+    const client = genAI as GoogleGenAI; // 先前已檢查非空，這裡斷言以通過型別檢查
+
+    // 封裝呼叫，加入重試與退避（處理 503/UNAVAILABLE/429）
+    const callWithRetry = async (): Promise<any> => {
+      const maxAttempts = 5;
+      const baseDelayMs = 800;
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          if (image) {
+            console.log('Processing image with message');
+            if (!image.startsWith('data:image/')) {
+              return { text: '# 錯誤：圖片格式不正確\n\n> 抱歉，只支援 base64 編碼的圖片格式。' };
+            }
+            const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+              return { text: '# 錯誤：圖片格式不正確\n\n> 抱歉，無法解析圖片格式。' };
+            }
+            const mimeType = matches[1];
+            const base64Data = matches[2];
+            return await client.models.generateContent({
+              model: MODEL_NAME,
+              contents: [
+                { role: 'user', parts: [
+                  { text: completePrompt },
+                  { inlineData: { mimeType, data: base64Data } }
+                ]}
+              ],
+            });
+          } else {
+            return await client.models.generateContent({
+              model: MODEL_NAME,
+              contents: completePrompt,
+            });
+          }
+        } catch (err) {
+          lastError = err;
+          const errMsg = err instanceof Error ? err.message : String(err);
+          const retriable = errMsg.includes('503') || errMsg.includes('UNAVAILABLE') || errMsg.includes('429') || errMsg.toLowerCase().includes('rate limit') || errMsg.toLowerCase().includes('quota');
+          if (attempt < maxAttempts && retriable) {
+            const jitter = Math.random() * 200;
+            const delay = baseDelayMs * Math.pow(2, attempt - 1) + jitter;
+            await new Promise(res => setTimeout(res, delay));
+            continue;
+          }
+          throw err;
+        }
       }
-      
-      // 从 data URL 中提取 MIME 類型和 base64 數據
-      const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      if (!matches || matches.length !== 3) {
-        return '# 錯誤：圖片格式不正確\n\n> 抱歉，無法解析圖片格式。';
-      }
-      
-      const mimeType = matches[1];
-      const base64Data = matches[2];
-      
-      // 創建多模態內容
-      result = await genAI.models.generateContent({
-        model: MODEL_NAME,
-        contents: [
-          { role: 'user', parts: [
-            { text: completePrompt },
-            { inlineData: { mimeType, data: base64Data } }
-          ]}
-        ],
-      });
-    } else {
-      // 純文字內容
-      result = await genAI.models.generateContent({
-        model: MODEL_NAME,
-        contents: completePrompt,
-      });
-    }
+      throw lastError;
+    };
+
+    result = await callWithRetry();
     
     console.log('Received response from API');
     
@@ -197,6 +208,9 @@ export async function getChatResponse(message: string, context?: ChatContext, im
     console.error('Error in chat response:', error);
     if (error instanceof Error) {
       console.error('Error details:', error.message);
+      if (error.message.includes('503') || error.message.includes('UNAVAILABLE')) {
+        return '# 服務繁忙\n\n> Google AI 目前過載，請稍後再試（已自動重試數次）。\n\n建議：等待數十秒再重試，或於離峰時段使用。';
+      }
       if (error.message.includes('API_KEY_INVALID')) {
         return '# 錯誤：API 金鑰無效\n\n> 抱歉，AI 助教的 API 金鑰無效。請聯繫系統管理員。';
       } else if (error.message.includes('not found') || error.message.includes('not supported')) {

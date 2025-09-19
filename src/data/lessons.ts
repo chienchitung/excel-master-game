@@ -2,6 +2,7 @@ import { Lesson } from '../types/lesson'
 
 // Mapping from lesson_id to lesson number
 const lessonMapping = {
+  "4ffe89bd-cef6-4468-85dd-c8a3358e563f": 0,
   "a1b2c3d4-e5f6-47a8-9b0c-1d2e3f4a5b6c": 1, 
   "b2c3d4e5-f6a7-58b9-ac0d-2e3f4a5b6c7d": 2, 
   "d4e5f6a7-b8c9-7adb-ce2f-4a5b6c7d8e9f": 3, 
@@ -20,6 +21,53 @@ const getLessonId = (lessonNumber: number): string => {
 }
 
 export const lessons: Lesson[] = [
+  {
+    lesson_id: getLessonId(0),
+    number: 0,
+    title: "前導課程：Excel 基本觀念",
+    description: "認識 Excel 的介面、儲存格概念與常見操作，建立學習基礎",
+    content: `
+      <div class="p-4">
+        <h2 class="text-2xl font-bold mb-4 text-blue-600 border-b pb-2">開始之前：打好 Excel 基礎</h2>
+        <p class="mb-4">在進入挑戰關卡前，先用幾分鐘快速建立 Excel 的基本觀念，之後學習函數與分析時會更順利。</p>
+
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-2 text-blue-700">介面與核心概念</h3>
+          <ul class="list-disc ml-5 space-y-1 bg-gray-50 p-3 rounded">
+            <li>工作簿（Workbook）與工作表（Sheet）</li>
+            <li>儲存格（Cell）與儲存格參照（如 A1、B2）</li>
+            <li>相對參照與絕對參照：A1 vs $A$1</li>
+            <li>常見資料型態：數值、文字、日期</li>
+          </ul>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-2 text-blue-700">常見操作</h3>
+          <ul class="list-disc ml-5 space-y-1 bg-gray-50 p-3 rounded">
+            <li>快速輸入與自動填滿（拖曳填滿控制柄）</li>
+            <li>格式化數值（千分位、小數位）</li>
+            <li>排序與篩選（資料 > 篩選）</li>
+            <li>建立簡易圖表（插入 > 圖表）</li>
+          </ul>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-xl font-bold mb-2 text-blue-700">公式入門</h3>
+          <div class="bg-gray-50 p-3 rounded mb-3 font-mono border-l-4 border-blue-500">=A1 + B1</div>
+          <p class="mb-2">所有公式都以等號（=）開頭，並可結合儲存格與函數。接下來的關卡會帶你從 SUM、AVERAGE 到 IF、VLOOKUP 等常用函數。</p>
+        </div>
+
+        <div class="mb-4 bg-gray-50 p-4">
+          <p class="mb-2">💡 <span class="font-bold">學習建議：</span></p>
+          <ul class="list-disc ml-5 space-y-1">
+            <li>遇到複雜問題時先拆解成小步驟</li>
+            <li>多利用範例練習，熟悉輸入與參照規則</li>
+            <li>善用快捷鍵：Ctrl+C/V 複製貼上、Ctrl+Z 復原</li>
+          </ul>
+        </div>
+      </div>
+    `,
+  },
   {
     lesson_id: getLessonId(1),
     number: 1, 
