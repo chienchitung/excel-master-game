@@ -23,7 +23,7 @@
     "jsdom": "^27.0.0",
     "lucide-react": "^0.469.0",
     "markdown-to-jsx": "^7.7.4",
-    "next": "^16.0.7",
+    "next": "16.0.10",
     "react": "^19.0.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
